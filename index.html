@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FBF6EC">
+<title>Vastu Prop</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Vastu Prop test app (27 Oct 2026). Locked white, cream and gold design. Four features: floor plan check, room camera check, Vastu compass, numerology. */
+:root{
+  --bg:#FBF6EC; --panel:#FFFFFF; --ink:#2B2116; --muted:#6E604C; --line:rgba(164,122,50,.25);
+  --gold:#C9A05A; --gold-deep:#8A6424; --gold-soft:#FBF0D8;
+  --good:#2F7D4F; --good-bg:#E3F1E8; --ok:#8A6424; --ok-bg:#FBF0D8; --bad:#A8432E; --bad-bg:#F8E3DD; --none:#6E604C; --none-bg:#EFE8DA; --warn:#B8650A; --warn-bg:#FFF1D6;
+  --g-live:#3DBB73; --a-live:#F0A33A; --r-live:#E5604A;
+  --display:'Cormorant Garamond',Georgia,serif; --body:Manrope,system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+#view{max-width:480px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px;min-height:100vh}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,253,248,.97);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px max(6px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));z-index:20}
+nav a{min-height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;color:var(--muted);font-size:11px;font-weight:700}
+nav a[aria-current="page"]{color:var(--gold-deep);font-weight:800}
+nav svg{width:22px;height:22px}
+.eyebrow{font-size:11px;letter-spacing:.26em;font-weight:800;color:var(--gold-deep);text-transform:uppercase}
+h1{font-family:var(--display);font-weight:600;font-size:31px;line-height:1.08;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:23px;line-height:1.1;margin:0}
+p{margin:0}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.card{border:1px solid var(--line);border-radius:18px;background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px rgba(164,122,50,.08)}
+.btn{min-height:52px;border-radius:26px;border:0;background:linear-gradient(#F6E3B4,#E2BF7A 50%,#C9A05A);box-shadow:0 6px 18px rgba(164,122,50,.3),inset 0 1px 0 rgba(255,255,255,.9);color:#1F160A;font:800 15px var(--body);cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:disabled{background:#E6DECF;box-shadow:none;color:#9A8C78}
+.btn2{min-height:46px;border-radius:23px;border:1px solid rgba(164,122,50,.55);background:var(--panel);color:var(--gold-deep);font:700 14px var(--body);cursor:pointer;width:100%}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--line);background:#fff;font:600 14px var(--body);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft);color:var(--gold-deep);font-weight:800}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:16px;font-size:12.5px;font-weight:800;align-self:center}
+.ldot{width:9px;height:9px;border-radius:5px;display:inline-block}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{border:1px solid var(--line);border-radius:18px;background:#fff;padding:16px 14px;display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--ink);min-height:130px}
+.tile b{font-size:15px} .tile span{font-size:12.5px;color:var(--muted)}
+.tile svg{width:30px;height:30px}
+.hero{position:relative;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:18px 0 6px}
+.tag{font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:12px}
+.g{background:var(--good-bg);color:var(--good)} .b{background:var(--bad-bg);color:var(--bad)}
+.lbl{font-size:11px;letter-spacing:.2em;font-weight:800;color:var(--muted);text-transform:uppercase}
+.deg{font-family:var(--display);font-size:60px;line-height:1;color:var(--gold-deep);font-variant-numeric:tabular-nums}
+.dial{position:relative;width:100%;max-width:330px;aspect-ratio:1;margin:0 auto}
+.dial svg{width:100%;height:100%;display:block}
+.plan{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#fff;touch-action:none;user-select:none}
+.plan img{display:block;width:100%;pointer-events:none}
+.plan svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.handle{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:17px;background:#fff;border:3px solid var(--gold-deep);box-shadow:0 2px 8px rgba(0,0,0,.3);touch-action:none}
+.pchip{position:absolute;white-space:nowrap;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:10px;background:rgba(255,253,246,.97);border:1.5px solid var(--gold);color:#5E4416;box-shadow:0 2px 6px rgba(94,68,22,.2);pointer-events:none}
+.rm{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 10px}
+.rm .nm{font-weight:700;font-size:14px;min-width:0;overflow-wrap:anywhere}
+select,input[type=number],input[type=text]{font:700 14px var(--body);border-radius:12px;border:1px solid var(--line);padding:8px 10px;background:#fff;color:var(--ink);min-height:42px}
+.rm select{font-size:12.5px;max-width:150px}
+.x{width:38px;height:38px;border-radius:19px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:16px}
+.res{display:grid;grid-template-columns:1fr auto auto;gap:6px 10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.res:last-child{border-bottom:0}
+.st{min-width:76px;text-align:center;font-size:12px;font-weight:800;padding:3px 9px;border-radius:12px}
+.flag{grid-column:1/-1;font-size:11.5px;font-weight:700;color:var(--warn)}
+.item{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.45}
+.num{flex:none;width:24px;height:24px;border-radius:12px;background:var(--gold-soft);color:var(--gold-deep);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.err{background:var(--bad-bg);color:var(--bad);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600}
+.spin{width:50px;height:50px;border-radius:25px;border:4px solid var(--gold-soft);border-top-color:var(--gold);animation:sp 1s linear infinite;margin:20px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* camera */
+.cam{position:fixed;inset:0;background:#000;z-index:30;color:#fff;overflow:hidden}
+.cam video,.cam img.still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam .shade{position:absolute;inset:0;background:linear-gradient(rgba(20,14,6,.72) 0%,rgba(20,14,6,.1) 30%,rgba(20,14,6,0) 50%,rgba(20,14,6,.15) 66%,rgba(20,14,6,.85) 100%);pointer-events:none}
+.camtop{position:absolute;left:0;right:0;top:0;padding:max(14px,env(safe-area-inset-top)) 14px 0;display:flex;flex-direction:column;align-items:center;gap:6px;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.camtop .deg{color:#fff;font-size:54px}
+.ctag{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:16px;background:rgba(0,0,0,.5);font-size:12.5px;font-weight:800}
+.cambot{position:absolute;left:0;right:0;bottom:0;padding:0 16px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+.shut{width:78px;height:78px;border-radius:39px;border:0;display:flex;align-items:center;justify-content:center;font-size:26px}
+.close{position:absolute;left:14px;top:max(14px,env(safe-area-inset-top));width:44px;height:44px;border-radius:22px;background:rgba(0,0,0,.45);border:0;color:#fff;font-size:20px;z-index:2}
+.shot{position:relative;border-radius:18px;overflow:hidden}
+.shot img{display:block;width:100%}
+.pin{position:absolute;min-width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;color:#fff;padding:0 8px;box-shadow:0 0 0 3px rgba(255,255,255,.9),0 3px 8px rgba(0,0,0,.35);white-space:nowrap}
+.stamp{position:absolute;left:8px;right:8px;bottom:8px;border-radius:12px;background:rgba(20,14,6,.74);color:#fff;padding:8px 10px;font-size:12px;display:flex;flex-direction:column}
+.q{display:flex;flex-direction:column;gap:8px}
+.overlay{position:fixed;inset:0;background:rgba(251,246,236,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;z-index:40}
+.digits{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
+.d{width:38px;height:38px;border-radius:10px;border:1px solid rgba(164,122,50,.45);background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+.d.res2{background:linear-gradient(#F6E3B4,#C9A05A);border:0}
+.bignum{width:116px;height:116px;border-radius:58px;background:#fff;border:1.5px solid var(--gold);box-shadow:0 0 28px #fff,0 6px 18px rgba(164,122,50,.25);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:68px;color:var(--gold-deep);margin:6px auto}
+[hidden]{display:none!important}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+</style>
+</head>
+<body>
+<main id="view"></main>
+<nav aria-label="Main">
+  <a href="#home" data-r="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Home</a>
+  <a href="#plan" data-r="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 12h7v9M10 12V3M14 3v6h7"/></svg>Plan</a>
+  <a href="#room" data-r="room"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Room</a>
+  <a href="#compass" data-r="compass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 5l2.5 7L12 19l-2.5-7z"/></svg>Compass</a>
+  <a href="#numbers" data-r="numbers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4z"/><path d="M9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16"/></svg>Numbers</a>
+</nav>
+<div class="overlay" id="cal" hidden>
+  <svg width="230" height="120" viewBox="0 0 300 160" aria-hidden="true"><path d="M150 80 C 190 20, 270 20, 270 80 C 270 140, 190 140, 150 80 C 110 20, 30 20, 30 80 C 30 140, 110 140, 150 80Z" fill="none" stroke="#A8432E" stroke-width="5" stroke-dasharray="12 9" stroke-linecap="round"/><g transform="translate(232 38) rotate(35)"><rect x="-15" y="-26" width="30" height="52" rx="6" fill="#2B2116"/><rect x="-11" y="-20" width="22" height="38" rx="2" fill="#F6E3B4"/></g></svg>
+  <h2>Move your phone in a figure 8</h2>
+  <p class="muted">Draw a big ∞ in the air three times, turning your wrist.</p>
+  <button class="btn" id="caldone" type="button" style="max-width:300px">Done</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+// ======================================================================= data
+var Z8 = ["N","NE","E","SE","S","SW","W","NW"], Z16 = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+var INFO = {
+  N:{name:"North",deity:"Kubera",theme:"wealth and opportunity",el:null,good:["Cash storage","Study","Office","Living room"],avoid:["Toilet","Kitchen"]},
+  NE:{name:"North-East",deity:"Ishanya",theme:"purity and spirituality",el:["Water · Jal","#5B8DB8"],good:["Pooja","Meditation","Water source","Open space"],avoid:["Toilet","Heavy storage","Kitchen"]},
+  E:{name:"East",deity:"Indra / Surya",theme:"growth and light",el:null,good:["Main entrance","Living room","Study","Windows"],avoid:["Toilet","Heavy storage"]},
+  SE:{name:"South-East",deity:"Agni",theme:"fire and energy",el:["Fire · Agni","#D9722E"],good:["Kitchen","Electrical equipment"],avoid:["Underground water tank","Master bedroom"]},
+  S:{name:"South",deity:"Yama",theme:"stability and protection",el:null,good:["Storage","Heavy rooms","Bedroom"],avoid:["Main entrance","Underground water"]},
+  SW:{name:"South-West",deity:"Nairutya",theme:"stability and relationships",el:["Earth · Prithvi","#9A6B3F"],good:["Master bedroom","Heavy furniture","Safe","Storage"],avoid:["Toilet","Kitchen","Underground water"]},
+  W:{name:"West",deity:"Varuna",theme:"gains and children",el:null,good:["Dining","Children's room","Study"],avoid:["Main toilet where possible"]},
+  NW:{name:"North-West",deity:"Vayu",theme:"movement and support",el:["Air · Vayu","#8A9BB0"],good:["Guest room","Toilet","Storage","Garage"],avoid:["Master bedroom where possible"]}
+};
+var RULES = [["ENT-01","main_entrance","N","ideal",10,null],["ENT-02","main_entrance","E","ideal",10,null],["ENT-03","main_entrance","NE","ideal",10,null],["ENT-04","main_entrance","W","acceptable",5,"with suitable placement"],["ENT-05","main_entrance","S","avoid",-5,null],["KIT-01","kitchen","SE","ideal",10,null],["KIT-02","kitchen","NW","acceptable",5,null],["KIT-03","kitchen","NE","avoid",-10,null],["KIT-04","kitchen","C","avoid",-5,null],["KIT-05","kitchen","N","avoid",-5,null],["KIT-06","kitchen","SW","avoid",-5,null],["MBR-01","master_bedroom","SW","ideal",10,null],["MBR-02","master_bedroom","S","acceptable",5,null],["MBR-03","master_bedroom","W","acceptable",5,null],["MBR-04","master_bedroom","NE","avoid",-7,null],["MBR-05","master_bedroom","SE","avoid",-5,null],["MBR-06","master_bedroom","NW","avoid",-3,"'where possible' in source"],["CBR-01","children_bedroom","W","ideal",10,null],["CBR-02","children_bedroom","NW","ideal",10,null],["CBR-03","children_bedroom","E","acceptable",5,null],["GBR-01","guest_bedroom","NW","ideal",10,null],["GBR-02","guest_bedroom","W","acceptable",5,null],["POO-01","pooja","NE","ideal",10,null],["POO-02","pooja","E","acceptable",5,null],["POO-03","pooja","N","acceptable",5,null],["LIV-01","living_room","N","ideal",10,null],["LIV-02","living_room","E","ideal",10,null],["LIV-03","living_room","NE","ideal",10,null],["LIV-04","living_room","NW","acceptable",5,null],["DIN-01","dining","W","ideal",10,null],["DIN-02","dining","NW","ideal",10,null],["DIN-03","dining","E","ideal",10,null],["STU-01","study","E","ideal",10,null],["STU-02","study","N","ideal",10,null],["STU-03","study","NE","ideal",10,null],["STU-04","study","W","acceptable",5,null],["TOI-01","toilet","NW","ideal",10,null],["TOI-02","toilet","W","ideal",10,null],["TOI-03","toilet","SW","disputed",0,"Section 2 says acceptable 'in some traditions'; section 1.3 says avoid. Expert must decide."],["TOI-04","toilet","NE","avoid",-10,null],["TOI-05","toilet","C","avoid",-10,null],["TOI-06","toilet","N","avoid",-5,null],["TOI-07","toilet","E","avoid",-5,null],["STA-01","staircase","S","ideal",10,null],["STA-02","staircase","W","ideal",10,null],["STA-03","staircase","SW","ideal",10,null],["STA-04","staircase","NE","avoid",-5,null],["STA-05","staircase","C","avoid",-10,null],["STO-01","storage","SW","ideal",10,null],["STO-02","storage","S","ideal",10,null],["STO-03","storage","NW","acceptable",5,"frequently used items"],["STO-04","storage","NE","avoid",-5,"heavy storage"],["STO-05","storage","E","avoid",-5,"heavy storage"],["CSH-01","cash_locker","N","ideal",10,"against South wall, opening toward North"],["CSH-02","cash_locker","NE","avoid",-5,null],["UGT-01","underground_tank","NE","ideal",10,null],["UGT-02","underground_tank","N","acceptable",5,null],["UGT-03","underground_tank","SW","avoid",-5,null],["UGT-04","underground_tank","SE","avoid",-5,null],["UGT-05","underground_tank","S","avoid",-5,null],["OHT-01","overhead_tank","SW","ideal",10,null],["OHT-02","overhead_tank","S","acceptable",5,null],["OHT-03","overhead_tank","W","acceptable",5,null],["OHT-04","overhead_tank","NE","avoid",-5,null]], REMEDIES = [["RM-01","general","Clean and declutter the area",1,false],["RM-02","general","Improve natural light and ventilation",2,false],["RM-03","general","Repair broken fittings, leaks and damaged surfaces",3,false],["RM-04","general","Rearrange furniture or change how the room is used",4,false],["RM-05","general","Adjust facing or orientation within the room",5,false],["RM-06","general","Change colours, materials or lighting to suit the zone",6,false],["RM-07","general","Optional cultural remedy (e.g. yantra); not a proven cure",7,false],["RM-10","toilet_ne","Keep the toilet immaculately clean and dry, door closed, leaks fixed",1,false],["RM-11","toilet_ne","Ensure strong ventilation in the toilet",2,false],["RM-12","kitchen_ne","Orient the stove toward the South-East corner of the kitchen",5,false],["RM-13","kitchen_ne","Separate stove and sink (fire and water)",4,false],["RM-14","master_bedroom_ne","Use another room for the master couple if possible",4,false],["RM-15","master_bedroom_ne","Adjust bed orientation (head toward South or East) and reduce clutter",5,false],["RM-16","storage_ne","Move heavy items to the South-West; keep North-East light",4,false],["RM-17","structural","Consult an architect or engineer before any structural change",0,true],["RM-18","entrance","Clean, light, repair and declutter the entrance",1,false],["RM-19","mirror","Move or cover a mirror facing the bed or main entrance",4,false]];
+var NUM = {"1": {"title": "A home for fresh starts", "meaning": "Traditionally linked with new beginnings, independence and leadership. Often chosen by people starting a business or a new phase of life.", "lucky_colours": "Gold, Orange", "suits": "First-time owners, Entrepreneurs, Independent professionals"}, "2": {"title": "A home for harmony", "meaning": "Traditionally linked with partnership, calm and cooperation. Seen as a gentle, balanced home for couples.", "lucky_colours": "White, Cream", "suits": "Couples, Small families, People who value calm"}, "3": {"title": "A home for creativity", "meaning": "Traditionally linked with expression, learning and social life. A lively home that welcomes friends and ideas.", "lucky_colours": "Yellow, Light purple", "suits": "Creative people, Students, Families who host often"}, "4": {"title": "A home for stability", "meaning": "Traditionally linked with structure, steady effort and security. A grounded home for building routines and savings.", "lucky_colours": "Blue, Grey", "suits": "Long-term planners, Working families, People settling down"}, "5": {"title": "A home for change and energy", "meaning": "Traditionally linked with movement, variety and new experiences. An active home that suits busy, curious people.", "lucky_colours": "Green, Turquoise", "suits": "Frequent travellers, Young professionals, People who like change"}, "6": {"title": "A home for family and care", "meaning": "Traditionally linked with love, nurturing and responsibility. One of the most sought-after numbers for family homes.", "lucky_colours": "Pink, Light blue", "suits": "Families with children, Caregivers, Joint families"}, "7": {"title": "A home for reflection", "meaning": "Traditionally linked with study, inner growth and quiet. A peaceful home for thinking, reading and spiritual practice.", "lucky_colours": "Violet, Sea green", "suits": "Writers and researchers, Retired couples, People who like quiet"}, "8": {"title": "A home for ambition", "meaning": "Traditionally linked with discipline, work and long-term goals. Often chosen by people focused on career or business.", "lucky_colours": "Dark blue, Black", "suits": "Business owners, Career-focused people, Investors"}, "9": {"title": "A home for generosity", "meaning": "Traditionally linked with compassion, completion and community. A warm home that is open to others.", "lucky_colours": "Red, Maroon", "suits": "Large families, Community-minded people, Those who host and help"}};
+var TYPES = [["kitchen","Kitchen"],["master_bedroom","Master bedroom"],["children_bedroom","Children's bedroom"],["guest_bedroom","Guest bedroom"],["bedroom","Bedroom (choose which)"],["living_room","Living room"],["dining","Dining"],["toilet","Toilet / bath"],["pooja","Pooja"],["study","Study"],["storage","Storage"],["staircase","Staircase"],["utility","Utility / dry balcony"],["balcony","Balcony / deck"],["passage","Passage"],["other","Other"]];
+var TNAME = {}; TYPES.forEach(function(t){ TNAME[t[0]] = t[1]; }); TNAME.main_entrance = "Main entrance";
+var SAMPLE_PLAN = {src:"sample_plan.jpg", W0:1088, H0:940, box:[22,78,1042,922],
+  labels:[["Toilet","toilet",283,181],["Bedroom","bedroom",532,208],["Dry balcony","utility",924,414],["Toilet","toilet",716,465],["M. Bedroom","master_bedroom",251,460],["Kitchen","kitchen",916,631],["Living & dining","living_room",524,748],["Passage","passage",875,864],["Deck","balcony",120,840],["Chajja","balcony",488,32]]};
+
+// ======================================================================= helpers
+var $ = function(id){ return document.getElementById(id); };
+function n360(b){ return ((b % 360) + 360) % 360; }
+function z8(b){ return Z8[Math.floor(n360(b + 22.5) / 45) % 8]; }
+function z16(b){ return Z16[Math.floor(n360(b + 11.25) / 22.5) % 16]; }
+function angDiff(a, b){ var d = n360(a - b); return d > 180 ? d - 360 : d; }
+function el(t, a, html){ var e = document.createElement(t); if (a) for (var k in a) { if (a[k] == null) continue; if (k === "text") e.textContent = a[k]; else if (k.slice(0,2) === "on") e.addEventListener(k.slice(2), a[k]); else e.setAttribute(k, a[k]); } if (html != null) e.innerHTML = html; return e; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function pt(c, r, deg){ var a = (deg - 90) * Math.PI / 180; return [c + r * Math.cos(a), c + r * Math.sin(a)]; }
+function buzz(ms){ try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+// ======================================================================= compass sensor (shared)
+var C = {started:false, live:false, none:false, flatH:null, upH:null, beta:0, gamma:0, samples:[], last:0, calibrating:false, offset:0, sunFixed:false, listeners:[], manual:128, pos:null, sun:null};
+function lp(prev, raw){ if (prev === null) return raw; var k = 0.18, a = prev * Math.PI / 180, b = raw * Math.PI / 180; return n360(Math.atan2(Math.sin(a) * (1 - k) + Math.sin(b) * k, Math.cos(a) * (1 - k) + Math.cos(b) * k) * 180 / Math.PI); }
+function onOrient(e){
+  var flat = null, up = null, scr = (screen.orientation && typeof screen.orientation.angle === "number") ? screen.orientation.angle : (window.orientation || 0);
+  if (typeof e.webkitCompassHeading === "number" && !isNaN(e.webkitCompassHeading)) { flat = up = e.webkitCompassHeading; }           // iPhone
+  else if ((e.absolute || e.type === "deviceorientationabsolute") && e.alpha !== null) {                                              // Android
+    var r = Math.PI / 180, a = e.alpha * r, b = (e.beta || 0) * r, g = (e.gamma || 0) * r;
+    flat = n360(360 - e.alpha + scr);
+    var vx = -Math.cos(a) * Math.sin(g) - Math.sin(a) * Math.sin(b) * Math.cos(g), vy = -Math.sin(a) * Math.sin(g) + Math.cos(a) * Math.sin(b) * Math.cos(g);
+    up = n360(Math.atan2(vx, vy) / r);                 // direction the BACK CAMERA faces (W3C formula)
+  }
+  if (flat === null) return;
+  C.beta = e.beta || 0; C.gamma = e.gamma || 0;
+  C.flatH = lp(C.flatH, flat); C.upH = lp(C.upH, up);
+  C.last = Date.now(); C.samples.push({t:C.last, f:flat, u:up});
+  if (!C.live) { C.live = true; C.none = false; }
+  emit();
+}
+var emitPending = false;
+function emit(){ if (emitPending) return; emitPending = true; requestAnimationFrame(function(){ emitPending = false; C.listeners.forEach(function(f){ try { f(); } catch (e) {} }); }); }
+async function startCompass(){
+  if (C.started) return; C.started = true;
+  try { if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") { var r = await DeviceOrientationEvent.requestPermission(); if (r !== "granted") throw 0; } }
+  catch (e) { C.none = true; emit(); return; }
+  if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", onOrient); else window.addEventListener("deviceorientation", onOrient);
+  setTimeout(function(){ if (!C.live) { C.none = true; emit(); } }, 2500);
+  setInterval(emit, 500);
+  keepAwake();
+}
+function isUpright(){ return Math.abs(C.beta) > 50 && Math.abs(C.beta) < 130; }
+function isFlat(){ return Math.abs(C.beta) < 25 && Math.abs(C.gamma) < 25; }
+function heading(mode){
+  if (!C.live) return n360(C.manual + 0);
+  var h = mode === "up" ? C.upH : C.flatH; return h === null ? null : n360(h + C.offset);
+}
+function spread(mode){
+  var now = Date.now(); C.samples = C.samples.filter(function(s){ return now - s.t < 2000; });
+  if (C.samples.length < 5) return 99;
+  var key = mode === "up" ? "u" : "f", x = 0, y = 0; C.samples.forEach(function(s){ x += Math.cos(s[key] * Math.PI / 180); y += Math.sin(s[key] * Math.PI / 180); });
+  var m = Math.atan2(y, x) * 180 / Math.PI, d = 0; C.samples.forEach(function(s){ d = Math.max(d, Math.abs(angDiff(s[key], m))); }); return d;
+}
+// returns [color, message, ready]
+function cstatus(mode){
+  if (!C.started) return ["red","Compass off",false];
+  if (C.none && !C.live) return ["green","No compass: using the manual slider",true];
+  if (C.calibrating) return ["red","Calibrate first",false];
+  if (Date.now() - C.last > 1500) return ["red","Compass not responding",false];
+  if (mode === "up" && !isUpright()) return ["amber","Hold the phone upright",false];
+  if (mode === "flat" && !isFlat()) return ["amber","Hold the phone flat",false];
+  var sp = spread(mode);
+  return sp < 5 ? ["green","Steady · ±" + Math.max(1, Math.round(sp)) + "°",true] : ["amber","Hold still · moving ±" + Math.round(sp) + "°",false];
+}
+var wake = null;
+async function keepAwake(){ try { if ("wakeLock" in navigator && document.visibilityState === "visible") wake = await navigator.wakeLock.request("screen"); } catch (e) {} }
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible" && C.live) keepAwake(); });
+function calibrate(then){ C.calibrating = true; $("cal").hidden = false; emit(); $("caldone").onclick = function(){ C.calibrating = false; C.samples = []; $("cal").hidden = true; emit(); if (then) then(); }; }
+function statusPill(mode, dark){
+  var s = cstatus(mode), col = {green:dark ? "var(--g-live)" : "var(--good)", amber:dark ? "var(--a-live)" : "var(--warn)", red:dark ? "var(--r-live)" : "var(--bad)"}[s[0]];
+  var bg = dark ? "rgba(0,0,0,.5)" : {green:"var(--good-bg)", amber:"var(--warn-bg)", red:"var(--bad-bg)"}[s[0]];
+  return '<span class="' + (dark ? "ctag" : "pill") + '" style="background:' + bg + ';color:' + (dark ? "#fff" : col) + '"><i class="ldot" style="background:' + col + '"></i>' + s[1] + '</span>';
+}
+function manualSlider(onChange){
+  var w = el("div", {class:"card"});
+  w.append(el("span", {class:"lbl", text:"No compass found"}), el("p", {class:"small muted", text:"This device has no compass sensor (or permission was refused). Set the direction by hand:"}));
+  var r = el("input", {type:"range", min:"0", max:"359", value:String(C.manual), "aria-label":"Direction in degrees", style:"width:100%;accent-color:#C9A05A"});
+  r.addEventListener("input", function(){ C.manual = Number(r.value); emit(); if (onChange) onChange(); });
+  w.append(r); return w;
+}
+
+// ======================================================================= location + sun
+function sunPos(date, lat, lon){
+  var rad = Math.PI / 180, n = date.getTime() / 86400000 + 2440587.5 - 2451545.0;
+  var L = n360(280.460 + 0.9856474 * n), g = n360(357.528 + 0.9856003 * n) * rad;
+  var lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad, eps = (23.439 - 0.0000004 * n) * rad;
+  var ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam)), dec = Math.asin(Math.sin(eps) * Math.sin(lam));
+  var gmst = n360(280.46061837 + 360.98564736629 * n), H = (gmst + lon) * rad - ra, la = lat * rad;
+  var alt = Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(H));
+  var az = Math.atan2(-Math.sin(H), Math.tan(dec) * Math.cos(la) - Math.sin(la) * Math.cos(H));
+  return {az:n360(az / rad), alt:alt / rad};
+}
+function getLocation(done){
+  if (!navigator.geolocation) { done("This phone can't share location."); return; }
+  navigator.geolocation.getCurrentPosition(function(p){ C.pos = p.coords; C.sun = sunPos(new Date(), p.coords.latitude, p.coords.longitude); done(null); },
+    function(e){ done(e.code === 1 ? "Location permission was not given. Allow it in Chrome's site settings." : "Couldn't get a GPS fix. Try near a window."); },
+    {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
+}
+function locText(){ return C.pos ? C.pos.latitude.toFixed(3) + "°N " + C.pos.longitude.toFixed(3) + "°E · ±" + Math.round(C.pos.accuracy) + " m" : "Location not set"; }
+
+// ======================================================================= dial
+function dialHTML(){
+  var c = 170, g = '<circle cx="170" cy="170" r="164" fill="#FFFDF6" stroke="#C9A05A" stroke-width="2"/>';
+  Z8.forEach(function(z, i){
+    var a0 = i * 45 - 22.5, a1 = i * 45 + 22.5, info = INFO[z], col = info.el ? info.el[1] : "#C9A05A";
+    var p0 = pt(c, 58, a0), p1 = pt(c, 128, a0), p2 = pt(c, 128, a1), p3 = pt(c, 58, a1);
+    g += '<path class="wz" data-z="' + z + '" d="M' + p0 + ' L' + p1 + ' A128 128 0 0 1 ' + p2 + ' L' + p3 + ' A58 58 0 0 0 ' + p0 + 'Z" fill="' + col + '" fill-opacity=".13" stroke="#C9A05A"/>';
+    var m = pt(c, 100, i * 45), d = pt(c, 78, i * 45);
+    g += '<text transform="rotate(' + (i * 45) + ' ' + m + ')" x="' + m[0] + '" y="' + (m[1] + 6) + '" text-anchor="middle" font-family="Manrope" font-weight="800" font-size="' + (z.length > 1 ? 15 : 19) + '" fill="' + (z === "N" ? "#A8432E" : "#5E4416") + '">' + z + '</text>';
+    g += '<text transform="rotate(' + (i * 45) + ' ' + d + ')" x="' + d[0] + '" y="' + (d[1] + 4) + '" text-anchor="middle" font-family="Manrope" font-weight="600" font-size="9.5" fill="#6E604C">' + info.deity.split(" / ")[0] + '</text>';
+  });
+  for (var deg = 0; deg < 360; deg += 5) { var o = pt(c, 162, deg), i2 = pt(c, deg % 45 === 0 ? 148 : deg % 15 === 0 ? 153 : 157, deg); g += '<line x1="' + o[0] + '" y1="' + o[1] + '" x2="' + i2[0] + '" y2="' + i2[1] + '" stroke="#A47A32" stroke-width="' + (deg % 45 === 0 ? 2 : 1) + '"/>'; }
+  Z16.forEach(function(z, i){ if (i % 2 === 0) return; var p = pt(c, 140, i * 22.5); g += '<text transform="rotate(' + (i * 22.5) + ' ' + p + ')" x="' + p[0] + '" y="' + (p[1] + 3.5) + '" text-anchor="middle" font-family="Manrope" font-weight="700" font-size="9" fill="#8A6424">' + z + '</text>'; });
+  g += '<circle class="sundot" cx="170" cy="20" r="9" fill="#F2B233" stroke="#fff" stroke-width="2" visibility="hidden"/><circle cx="170" cy="170" r="56" fill="#FBF0D8" stroke="#C9A05A" stroke-width="1.5"/>';
+  return '<div class="rot" style="position:absolute;inset:0;will-change:transform"><svg viewBox="0 0 340 340" aria-hidden="true">' + g + '</svg></div>'
+    + '<svg viewBox="0 0 340 340" style="position:absolute;inset:0" aria-hidden="true"><path d="M170 0 l11 20 h-22z" fill="#2B2116"/><text x="170" y="166" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-weight="600" font-size="16" fill="#5E4416">Brahmasthan</text><text x="170" y="183" text-anchor="middle" font-family="Manrope" font-weight="700" font-size="10" fill="#6E604C">Space · Akasha</text></svg>';
+}
+function turnDial(root, h, state){
+  if (h === null) return;
+  state.disp = (state.disp || 0) + angDiff(h, n360(state.disp || 0));
+  root.querySelector(".rot").style.transform = "rotate(" + (-state.disp).toFixed(2) + "deg)";
+  var z = z8(h);
+  if (z !== state.zone) { root.querySelectorAll(".wz").forEach(function(w){ w.setAttribute("fill-opacity", w.getAttribute("data-z") === z ? ".42" : ".13"); }); if (state.zone && C.live) buzz(12); state.zone = z; }
+  var sd = root.querySelector(".sundot");
+  if (C.sun && C.sun.alt > 0) { var p = pt(170, 150, C.sun.az); sd.setAttribute("cx", p[0]); sd.setAttribute("cy", p[1]); sd.setAttribute("visibility", "visible"); } else sd.setAttribute("visibility", "hidden");
+}
+
+// ======================================================================= router
+var view = $("view"), cleanup = null;
+function route(){
+  if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; }
+  C.listeners = [];
+  var r = (location.hash || "#home").slice(1);
+  document.querySelectorAll("nav a").forEach(function(a){ if (a.getAttribute("data-r") === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  view.textContent = ""; window.scrollTo(0, 0);
+  ({home:Home, plan:Plan, room:Room, compass:Compass, numbers:Numbers}[r] || Home)();
+}
+window.addEventListener("hashchange", route);
+
+// ======================================================================= HOME
+function Home(){
+  var h = el("div", {class:"hero"});
+  h.append(el("span", {class:"eyebrow", text:"Vastu Prop"}), el("h1", {text:"Find your home's right direction"}), el("p", {class:"muted", text:"Four tools. Your phone's compass and camera do the work, our fixed Vastu rules do the scoring."}));
+  view.append(h);
+  var t = el("div", {class:"tiles"});
+  [["plan","Floor plan check","Score a plan room by room","M3 3h18v18H3zM3 12h7v9M10 12V3M14 3v6h7"],["room","Room camera check","Point, shoot, get fixes","M4 8h3l2-3h6l2 3h3v11H4zM15.5 13a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z"],["compass","Vastu compass","8 and 16 zones, sun check","M12 3a9 9 0 110 18 9 9 0 010-18zM12 5l2.5 7L12 19l-2.5-7z"],["numbers","Home numerology","What your flat number means","M4 4h16v16H4zM9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16"]].forEach(function(x){
+    t.append(el("a", {class:"tile", href:"#" + x[0]}, '<svg viewBox="0 0 24 24" fill="none" stroke="#8A6424" stroke-width="1.6" aria-hidden="true"><path d="' + x[3] + '"/></svg><b>' + x[1] + '</b><span>' + x[2] + '</span>'));
+  });
+  view.append(t);
+  var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
+  inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.0 · 28 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+}
+var installEvt = null;
+window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
+
+// ======================================================================= COMPASS
+function Compass(){
+  var st = {};
+  view.append(el("div", {style:"display:flex;justify-content:space-between;align-items:center"}, '<span class="eyebrow">Vastu compass</span><span id="cpill"></span>'));
+  var rd = el("div", {style:"text-align:center;display:flex;flex-direction:column;gap:2px"}, '<span class="deg" id="cdeg">—°</span><b id="czone" style="font-size:17px">Starting…</b><span class="small muted" id="csub">Hold the phone flat, top pointing ahead</span>');
+  var dial = el("div", {class:"dial"}, dialHTML());
+  var actions = el("div", {class:"row2"});
+  var calb = el("button", {class:"btn2", type:"button", text:"Calibrate", onclick:function(){ calibrate(); }});
+  var save = el("button", {class:"btn", type:"button", text:"Wait for steady…", disabled:"disabled"});
+  actions.append(calb, save);
+  var info = el("div", {class:"card"});
+  var saved = el("div", {class:"card", hidden:"hidden"}, '<span class="lbl">Saved readings</span><div id="clist"></div>');
+  var loc = el("div", {class:"card"});
+  view.append(rd, dial, actions, info, loc, saved);
+  var slot = el("div"); view.append(slot);
+  var lastZ = null, lastSun = "", list = [];
+  function drawInfo(z){ var i = INFO[z]; info.innerHTML = '<span class="lbl">Your phone points here</span><h2>' + i.name + ' · ' + i.deity + '</h2><p style="font-size:14px;color:#4E4232">Traditionally associated with ' + i.theme + '.</p>' + (i.el ? '<div><span class="tag" style="background:' + i.el[1] + '22;color:' + i.el[1] + '">Element: ' + i.el[0] + '</span></div>' : '') + '<span class="lbl">Good here</span><div class="chips" style="gap:6px">' + i.good.map(function(x){ return '<span class="tag g">' + x + '</span>'; }).join("") + '</div><span class="lbl">Usually avoided</span><div class="chips" style="gap:6px">' + i.avoid.map(function(x){ return '<span class="tag b">' + x + '</span>'; }).join("") + '</div>'; }
+  function drawLoc(){
+    var html = '<span class="lbl">Location and sun check</span><p class="small muted">GPS lets the compass check itself against the sun, which metal can\'t disturb. Your location stays on this phone.</p><b class="small">' + locText() + '</b>';
+    if (C.pos) {
+      C.sun = sunPos(new Date(), C.pos.latitude, C.pos.longitude);
+      if (C.sun.alt < 3) html += '<p class="small muted">The sun is ' + (C.sun.alt < 0 ? "below the horizon" : "too low") + ' now (' + C.sun.alt.toFixed(0) + '°). The sun check works in daylight.</p>';
+      else html += '<p class="small">Sun now: <b>' + C.sun.az.toFixed(1) + '° · ' + INFO[z8(C.sun.az)].name + '</b>, ' + C.sun.alt.toFixed(0) + '° up (gold dot on the dial). Lay the phone flat at a window, point its top at the sun or along your shadow, wait for green, then tap:</p><div class="row2"><button class="btn2" type="button" data-fix="sun">Top at the sun</button><button class="btn2" type="button" data-fix="shadow">Along my shadow</button></div>' + (C.sunFixed ? '<p class="small" style="color:var(--good);font-weight:800">Sun-checked: correction ' + (C.offset >= 0 ? "+" : "") + C.offset.toFixed(1) + '° <button class="btn2" type="button" data-fix="reset" style="min-height:34px;width:auto;padding:0 12px">Remove</button></p>' : '');
+    }
+    html += '<button class="btn2" type="button" data-fix="loc">' + (C.pos ? "Update location" : "Use my location") + '</button>';
+    if (html === lastSun) return; lastSun = html; loc.innerHTML = html;
+    loc.querySelectorAll("[data-fix]").forEach(function(b){ b.onclick = function(){
+      var k = b.getAttribute("data-fix");
+      if (k === "loc") { b.textContent = "Finding you…"; getLocation(function(err){ lastSun = ""; drawLoc(); if (err) loc.prepend(el("p", {class:"err", text:err})); }); return; }
+      if (k === "reset") { C.offset = 0; C.sunFixed = false; lastSun = ""; drawLoc(); return; }
+      if (!cstatus("flat")[2] || !C.live) { loc.prepend(el("p", {class:"err", text:"Wait for the green Steady pill, then tap again."})); return; }
+      var target = k === "sun" ? C.sun.az : n360(C.sun.az + 180), off = angDiff(target, C.flatH);
+      if (Math.abs(off) > 45) { loc.prepend(el("p", {class:"err", text:"The compass is " + Math.round(Math.abs(off)) + "° off the sun. Check you're pointing right, move away from metal, calibrate, and retry."})); return; }
+      C.offset = off; C.sunFixed = true; lastSun = ""; drawLoc(); buzz(40);
+    }; });
+  }
+  save.onclick = function(){ var h = heading("flat"); list.unshift({h:Math.round(h), z:z8(h), t:new Date(), s:C.sunFixed}); list = list.slice(0, 8); saved.hidden = false; $("clist").innerHTML = list.map(function(x){ return '<div class="res" style="grid-template-columns:auto 1fr auto"><b>' + x.h + '°</b><span>' + INFO[x.z].name + (x.s ? " · sun-checked" : "") + '</span><span class="small muted">' + x.t.toLocaleTimeString("en-IN", {hour:"numeric", minute:"2-digit"}) + '</span></div>'; }).join(""); };
+  var wasGreen = false;
+  C.listeners.push(function(){
+    var h = heading("flat"), s = cstatus("flat");
+    $("cpill").innerHTML = statusPill("flat");
+    if (C.none && !C.live && !slot.firstChild) slot.append(manualSlider());
+    if (h !== null) {
+      var z = z8(h);
+      $("cdeg").textContent = (s[0] === "amber" ? "~" : "") + Math.round(h) + "°";
+      $("czone").textContent = INFO[z].name + " · " + INFO[z].deity;
+      $("csub").textContent = "16-zone: " + z16(h) + (C.sunFixed ? " · sun-checked" : C.live ? " · magnetic compass" : " · set by hand");
+      turnDial(dial, h, st);
+      if (z !== lastZ) { lastZ = z; drawInfo(z); }
+    }
+    save.disabled = !s[2]; save.textContent = s[2] ? "Save " + Math.round(h) + "° · " + z8(h) : "Wait for steady…";
+    if (s[0] === "green" && !wasGreen && C.live) buzz(30); wasGreen = s[0] === "green";
+    drawLoc();
+  });
+  if (!C.started) { startCompass(); calibrate(); } else emit();
+  drawLoc();
+}
+
+// ======================================================================= NUMEROLOGY
+function homeNumber(s){
+  var digits = String(s).split("").filter(function(c){ return /[0-9]/.test(c); }).map(Number);
+  if (!digits.length) return null;
+  var steps = [digits], n = digits.reduce(function(a, b){ return a + b; }, 0);
+  while (n > 9) { var d = String(n).split("").map(Number); steps.push(d); n = d.reduce(function(a, b){ return a + b; }, 0); }
+  return {digits:digits, steps:steps, number: n === 0 ? 9 : n};
+}
+function Numbers(){
+  var state = {v:"1204"};
+  view.append(el("span", {class:"eyebrow", text:"Property numerology"}), el("h1", {text:"What does your flat number mean?"}));
+  var f = el("form", {style:"display:flex;gap:10px"});
+  var inp = el("input", {type:"text", id:"flat", value:state.v, "aria-label":"Flat or house number", maxlength:"20", inputmode:"text", style:"flex:1;min-width:0;height:52px;font-size:20px;letter-spacing:.08em"});
+  f.append(inp, el("button", {class:"btn", type:"submit", text:"Calculate", style:"width:auto;padding:0 20px"}));
+  var out = el("div", {style:"display:flex;flex-direction:column;gap:12px"});
+  f.addEventListener("submit", function(e){ e.preventDefault(); inp.blur(); draw(inp.value.trim()); });
+  view.append(f, out);
+  function draw(v){
+    out.textContent = ""; var r = homeNumber(v);
+    if (!r) { out.append(el("p", {class:"err", text:"That has no digits. Type the flat number, like 1204."})); return; }
+    out.append(el("div", {class:"bignum", role:"img", "aria-label":"Home number " + r.number, text:String(r.number)}));
+    r.steps.forEach(function(st, i){ var row = el("div", {class:"digits"}); st.forEach(function(d, j){ if (j) row.append(el("span", {class:"muted", text:"+"})); row.append(el("span", {class:"d", text:String(d)})); }); row.append(el("span", {class:"muted", text:"="}), el("span", {class:"d" + (i === r.steps.length - 1 ? " res2" : ""), text:String(st.reduce(function(a, b){ return a + b; }, 0))})); out.append(row); });
+    out.append(el("p", {class:"small muted", style:"text-align:center", text:"Only the digits count; letters like A- or B- are ignored."}));
+    var m = NUM[String(r.number)];
+    out.append(el("div", {class:"card"}, '<span class="tag g" style="align-self:flex-start">Approved · 27 Oct 2026</span><span class="lbl">Home number ' + r.number + '</span><h2>' + esc(m.title) + '</h2><p style="font-size:14px;color:#4E4232">' + esc(m.meaning) + '</p><span class="lbl">Colour ideas</span><p class="small"><b>' + esc(m.lucky_colours) + '</b></p><span class="lbl">Often suits</span><div class="chips" style="gap:6px">' + m.suits.split(", ").map(function(s){ return '<span class="tag" style="background:var(--gold-soft);color:var(--gold-deep)">' + esc(s) + '</span>'; }).join("") + '</div>'));
+    out.append(el("p", {class:"small muted", text:"Numerology is a traditional, belief-based practice. No number guarantees wealth, health or happiness, and no number is bad."}));
+  }
+  draw(state.v);
+}
+
+// ======================================================================= FLOOR PLAN CHECK
+var P = null;
+function resetPlan(){ P = {step:1, img:null, W:0, H:0, box:null, door:null, labels:[], mode:"box", sample:false, reading:false, err:"", uid:0}; }
+resetPlan();
+function loadSamplePlan(cb){
+  var im = new Image(); im.onload = function(){
+    var k = im.naturalWidth / SAMPLE_PLAN.W0;
+    P.img = SAMPLE_PLAN.src; P.W = im.naturalWidth; P.H = im.naturalHeight; P.sample = true;
+    P.box = {x0:SAMPLE_PLAN.box[0] * k, y0:SAMPLE_PLAN.box[1] * k, x1:SAMPLE_PLAN.box[2] * k, y1:SAMPLE_PLAN.box[3] * k};
+    P.labels = SAMPLE_PLAN.labels.map(function(l){ return {id:++P.uid, name:l[0], type:l[1], x:l[2] * k, y:l[3] * k}; });
+    cb();
+  }; im.src = SAMPLE_PLAN.src;
+}
+// label words -> room type (the word list we control)
+var VOCAB = [[/^(M\.?\s*BED(ROOM)?|MASTER(\s*BED(ROOM)?)?|MBR)$/,"master_bedroom"],[/^(DRY\s*BALCONY|UTILITY|WASH(\s*AREA)?)$/,"utility"],[/^LIVING.*$|^(HALL|DRAWING(\s*ROOM)?)$/,"living_room"],[/^DINING(\s*ROOM)?$/,"dining"],[/^(KITCHEN|KIT)$/,"kitchen"],[/^(TOILET|BATH(ROOM)?|WC|W\.C\.?|T\s*&\s*B)$/,"toilet"],[/^(BED(ROOM)?\s*\d*|CHILD.*|KIDS?\s*ROOM)$/,"bedroom"],[/^(POOJA|PUJA|MANDIR)(\s*ROOM)?$/,"pooja"],[/^STUDY$/,"study"],[/^STORE(\s*ROOM)?$/,"storage"],[/^(BALCONY|DECK|TERRACE|SIT\s*OUT|CHAJJA)$/,"balcony"],[/^(PASSAGE|LOBBY|FOYER|CORRIDOR)$/,"passage"]];
+var KNOWN = ["TOILET","BEDROOM","KITCHEN","BALCONY","PASSAGE","LIVING","DINING","DECK","STUDY","POOJA","STORE","BATH","HALL","LOBBY","FOYER","TERRACE","UTILITY","MASTER","ROOM","DRY"];
+function lev(a, b){ var m = [], i, j; for (i = 0; i <= a.length; i++) { m[i] = [i]; } for (j = 0; j <= b.length; j++) m[0][j] = j; for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) m[i][j] = Math.min(m[i-1][j] + 1, m[i][j-1] + 1, m[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return m[a.length][b.length]; }
+function fixWord(w){ if (w.length < 5 || KNOWN.indexOf(w) >= 0) return w; var best = null, bd = 9; KNOWN.forEach(function(k){ var d = lev(w, k); if (d < bd) { bd = d; best = k; } }); return bd <= 1 ? best : w; }
+function classify(text){
+  var raw = text.toUpperCase().replace(/[^A-Z0-9&. ]/g, "").trim(); if (!raw) return null;
+  var tries = [raw, raw.split(/\s+/).map(fixWord).join(" ")];
+  for (var t = 0; t < 2; t++) for (var i = 0; i < VOCAB.length; i++) if (VOCAB[i][0].test(tries[t])) return VOCAB[i][1];
+  return null;
+}
+function loadTesseract(){ return new Promise(function(res, rej){ if (window.Tesseract) return res(); var s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"; s.onload = res; s.onerror = function(){ rej(new Error("load")); }; document.head.appendChild(s); }); }
+function prepCanvas(img, mode){
+  var k = mode === "small" ? Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight)) : Math.min(2, 2400 / Math.max(img.naturalWidth, img.naturalHeight)), cv = document.createElement("canvas");
+  cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+  var x = cv.getContext("2d"); x.drawImage(img, 0, 0, cv.width, cv.height);
+  var d = x.getImageData(0, 0, cv.width, cv.height), a = d.data, lo = 255, hi = 0, i, g;
+  for (i = 0; i < a.length; i += 4) { g = .3 * a[i] + .59 * a[i + 1] + .11 * a[i + 2]; a[i] = g; if (g < lo) lo = g; if (g > hi) hi = g; }
+  for (i = 0; i < a.length; i += 4) { g = (a[i] - lo) * 255 / Math.max(1, hi - lo); if (mode === "bin") g = g > 110 ? 255 : 0; a[i] = a[i + 1] = a[i + 2] = g; }
+  x.putImageData(d, 0, 0); return {canvas:cv, k:k};
+}
+function pretty(t){ return t.toLowerCase().replace(/(^|[\s.&])([a-z])/g, function(m, p, c){ return p + c.toUpperCase(); }).replace(/\s+/g, " ").trim(); }
+var RANK = {master_bedroom:3, living_room:2, utility:2};
+async function readPlanLabels(onStep){
+  await loadTesseract();
+  var img = await new Promise(function(res, rej){ var im = new Image(); im.onload = function(){ res(im); }; im.onerror = rej; im.src = P.img; });
+  var found = [], worker = await Tesseract.createWorker("eng");
+  try {
+    var passes = ["gray", "bin"];
+    await worker.setParameters({tessedit_pageseg_mode: "11"});   // sparse text: room labels scattered over a drawing
+    for (var pi = 0; pi < passes.length; pi++) {
+      if (onStep) onStep(pi + 1, passes.length);
+      var pc = prepCanvas(img, passes[pi]);
+      var r = await worker.recognize(pc.canvas);
+      var words = (r.data.words || []).filter(function(w){ return w.confidence > 30 && /[A-Za-z]{2,}/.test(w.text); });
+      var cands = [];
+      words.forEach(function(w, i){
+        cands.push({t:w.text, b:w.bbox});
+        var n = words[i + 1];   // two-word names: M. BEDROOM, DRY BALCONY, LIVING & DINING
+        if (n && Math.abs(n.bbox.y0 - w.bbox.y0) < (w.bbox.y1 - w.bbox.y0) && n.bbox.x0 - w.bbox.x1 < (w.bbox.y1 - w.bbox.y0) * 2.5)
+          cands.push({t:w.text + " " + n.text, b:{x0:w.bbox.x0, y0:Math.min(w.bbox.y0, n.bbox.y0), x1:n.bbox.x1, y1:Math.max(w.bbox.y1, n.bbox.y1)}});
+      });
+      cands.forEach(function(c){
+        var clean = c.t.toUpperCase().replace(/[^A-Z&. ]/g, "").trim(), ty = classify(clean); if (!ty) return;
+        var x = (c.b.x0 + c.b.x1) / 2 / pc.k, y = (c.b.y0 + c.b.y1) / 2 / pc.k;
+        var near = found.filter(function(f){ return Math.abs(f.x - x) < P.W * .07 && Math.abs(f.y - y) < P.H * .04; })[0];
+        var name = ty === "living_room" && /DINING/.test(clean) ? "Living & dining" : pretty(clean);
+        if (near) { if ((RANK[ty] || 1) > (RANK[near.type] || 1) || (ty === near.type && name.length > near.name.length)) { near.type = ty; near.name = name; near.x = (near.x + x) / 2; } return; }
+        found.push({id:++P.uid, name:name.slice(0, 30), type:ty, x:x, y:y});
+      });
+    }
+  } finally { await worker.terminate(); }
+  // a combined "Living & dining" label also reads as a separate "Dining": keep one room
+  found.filter(function(f){ return f.type === "living_room" && /dining/i.test(f.name); }).forEach(function(l){
+    found = found.filter(function(f){ return !(f.type === "dining" && Math.abs(f.y - l.y) < P.H * .04 && Math.abs(f.x - l.x) < P.W * .15); });
+  });
+  return found;
+}
+function inside(l){ var b = P.box; return l.x >= b.x0 && l.x <= b.x1 && l.y >= b.y0 && l.y <= b.y1; }
+function planView(o){
+  var w = el("div", {class:"plan"}); w.append(el("img", {src:P.img, alt:"Floor plan"}));
+  var b = P.box, s = '<svg class="ov" viewBox="0 0 ' + P.W + ' ' + P.H + '" preserveAspectRatio="none" aria-hidden="true">';
+  if (b) {
+    s += '<path d="M0 0H' + P.W + 'V' + P.H + 'H0Z M' + b.x0 + ' ' + b.y0 + 'V' + b.y1 + 'H' + b.x1 + 'V' + b.y0 + 'Z" fill="rgba(43,33,22,.35)" fill-rule="evenodd"/><rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="none" stroke="#8A6424" stroke-width="' + P.W / 220 + '"/>';
+    if (o.zones) {
+      var cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, w2 = b.x1 - b.x0, h2 = b.y1 - b.y0, L = Math.hypot(w2, h2), hd = P.heading;
+      s += '<clipPath id="cl"><rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + w2 + '" height="' + h2 + '"/></clipPath><g clip-path="url(#cl)">';
+      for (var k = 0; k < 8; k++) { var rel = (22.5 + 45 * k - hd) * Math.PI / 180; s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + L * Math.sin(rel)) + '" y2="' + (cy - L * Math.cos(rel)) + '" stroke="#C9A05A" stroke-width="' + P.W / 400 + '" stroke-dasharray="' + P.W / 90 + ' ' + P.W / 140 + '"/>'; }
+      s += '<rect x="' + (cx - w2 / 6) + '" y="' + (cy - h2 / 6) + '" width="' + w2 / 3 + '" height="' + h2 / 3 + '" fill="rgba(201,160,90,.12)" stroke="#8A6424" stroke-width="' + P.W / 500 + '" stroke-dasharray="6 5"/>';
+      var rr = Math.min(w2, h2) * .46, fs = P.W / 30;
+      Z8.forEach(function(z, i){ var a = (45 * i - hd) * Math.PI / 180, x = cx + rr * Math.sin(a), y = cy - rr * Math.cos(a); s += '<circle cx="' + x + '" cy="' + y + '" r="' + fs * .95 + '" fill="' + (z === "N" ? "#A8432E" : "#8A6424") + '" opacity=".92"/><text x="' + x + '" y="' + (y + fs * .36) + '" text-anchor="middle" font-family="Manrope" font-weight="800" font-size="' + fs * (z.length > 1 ? .78 : 1) + '" fill="#fff">' + z + '</text>'; });
+      s += '</g>';
+    }
+  }
+  w.insertAdjacentHTML("beforeend", s + '</svg>');
+  (o.chips || []).forEach(function(c){ var fx = c.x / P.W, tx = fx < .12 ? "0" : fx > .88 ? "-100%" : "-50%"; w.append(el("span", {class:"pchip", style:"left:" + 100 * fx + "%;top:" + 100 * c.y / P.H + "%;transform:translate(" + tx + ",-50%);" + (c.style || ""), text:c.text})); });
+  if (P.door && !o.noDoor) w.append(el("span", {class:"pchip", style:"left:" + 100 * P.door.x / P.W + "%;top:" + 100 * P.door.y / P.H + "%;transform:translate(-50%,-50%);background:var(--good);color:#fff;border-color:#fff", text:"Main door"}));
+  return w;
+}
+function toImg(e, w){ var r = w.getBoundingClientRect(); return {x:Math.max(0, Math.min(P.W, (e.clientX - r.left) / r.width * P.W)), y:Math.max(0, Math.min(P.H, (e.clientY - r.top) / r.height * P.H))}; }
+function stepsBar(n){ var b = el("div", {style:"display:flex;gap:4px"}); for (var i = 1; i <= 5; i++) b.append(el("span", {style:"flex:1;height:5px;border-radius:3px;background:" + (i <= n ? "var(--gold)" : "var(--none-bg)")})); return b; }
+function Plan(){ ({1:planStep1, 2:planStep2, 3:planStep3, 4:planStep4, 5:planStep5})[P.step](); }
+function goP(n){ P.step = n; view.textContent = ""; window.scrollTo(0, 0); C.listeners = []; Plan(); }
+function planStep1(){
+  view.append(stepsBar(1), el("span", {class:"eyebrow", text:"Floor plan check · 1 of 5"}), el("h1", {text:"Add your floor plan"}), el("p", {class:"muted", text:"Take a photo of a brochure plan, choose one from your gallery, or try the sample."}));
+  var inp = el("input", {type:"file", accept:"image/*", id:"planfile", hidden:"hidden"});
+  inp.onchange = function(){ var f = inp.files && inp.files[0]; if (!f) return; var url = URL.createObjectURL(f), im = new Image(); im.onload = async function(){
+    P.img = url; P.W = im.naturalWidth; P.H = im.naturalHeight; P.sample = false; P.box = {x0:P.W * .04, y0:P.H * .04, x1:P.W * .96, y1:P.H * .96}; P.door = null; P.labels = []; P.reading = true; P.err = ""; goP(1);
+    try { P.labels = await readPlanLabels(function(i, n){ var m = document.getElementById("ocrmsg"); if (m) m.textContent = "Reading the room names on your plan… pass " + i + " of " + n + " (free, on this phone)"; }); if (!P.labels.length) P.err = "No room names could be read. You can add rooms by tapping the plan in step 4."; }
+    catch (e) { P.err = "Couldn't load the free text reader (needs internet once). You can add rooms by tapping the plan in step 4."; }
+    P.reading = false; P.mode = "box"; goP(2);
+  }; im.src = url; };
+  view.append(inp);
+  if (P.reading) { view.append(el("div", {class:"spin"}), el("p", {class:"muted", id:"ocrmsg", style:"text-align:center", text:"Reading the room names on your plan… (free, on this phone)"})); return; }
+  view.append(el("button", {class:"btn", type:"button", text:"Photo or gallery", onclick:function(){ inp.click(); }}),
+    el("button", {class:"btn2", type:"button", text:"Try the sample 2 BHK plan", onclick:function(){ loadSamplePlan(function(){ P.mode = "box"; P.door = null; goP(2); }); }}),
+    el("p", {class:"small muted", text:"Tip: shoot the plan flat, in good light, with all walls and the room names visible."}));
+}
+function planStep2(){
+  view.append(stepsBar(2), el("span", {class:"eyebrow", text:"Floor plan check · 2 of 5"}), el("h1", {text:P.mode === "box" ? "Box your flat's outer walls" : "Tap your main door"}),
+    el("p", {class:"muted", text:P.mode === "box" ? "Drag the two round handles to the corners of your flat." : "Tap where your flat's main door is."}));
+  if (P.err) view.append(el("p", {class:"err", text:P.err}));
+  var v = planView({});
+  if (P.mode === "box") {
+    [["x0","y0"],["x1","y1"]].forEach(function(k){
+      var hd = el("span", {class:"handle", style:"left:" + 100 * P.box[k[0]] / P.W + "%;top:" + 100 * P.box[k[1]] / P.H + "%"});
+      hd.addEventListener("pointerdown", function(e){ hd.setPointerCapture(e.pointerId);
+        function mv(ev){ var q = toImg(ev, v), b = P.box, m = P.W * .05; if (k[0] === "x0") { b.x0 = Math.min(q.x, b.x1 - m); b.y0 = Math.min(q.y, b.y1 - m); } else { b.x1 = Math.max(q.x, b.x0 + m); b.y1 = Math.max(q.y, b.y0 + m); }
+          hd.style.left = 100 * b[k[0]] / P.W + "%"; hd.style.top = 100 * b[k[1]] / P.H + "%"; v.querySelector("svg.ov").replaceWith(planView({}).querySelector("svg.ov")); }
+        function up(){ hd.removeEventListener("pointermove", mv); hd.removeEventListener("pointerup", up); }
+        hd.addEventListener("pointermove", mv); hd.addEventListener("pointerup", up); });
+      v.append(hd);
+    });
+    view.append(v, el("button", {class:"btn", type:"button", text:"Walls look right", onclick:function(){ P.mode = "door"; P.err = ""; goP(2); }}), el("button", {class:"btn2", type:"button", text:"Back", onclick:function(){ goP(1); }}));
+  } else {
+    v.addEventListener("click", function(e){ P.door = toImg(e, v); goP(2); });
+    var nx = el("button", {class:"btn", type:"button", text:"Next: set the direction", onclick:function(){ goP(3); }}); if (!P.door) nx.disabled = true;
+    view.append(v, el("p", {class:"small muted", text:P.door ? "Door marked. Tap again to move it." : "Look for the arrow or the gap marked as the entry."}), nx, el("button", {class:"btn2", type:"button", text:"Adjust the walls", onclick:function(){ P.mode = "box"; goP(2); }}));
+  }
+}
+function planStep3(){
+  var st = {};
+  view.append(stepsBar(3), el("span", {class:"eyebrow", text:"Floor plan check · 3 of 5"}), el("h1", {text:"Which way does the top of your plan face?"}),
+    el("p", {class:"muted", text:"Stand in your home, lay the phone flat and point its top the same way as the top of your plan."}));
+  var pill = el("div", {style:"display:flex;justify-content:center"}), rd = el("div", {style:"text-align:center"}, '<span class="deg" id="pdeg">—°</span><br><b id="pzone"></b>');
+  var dial = el("div", {class:"dial", style:"max-width:260px"}, dialHTML());
+  var use = el("button", {class:"btn", type:"button", disabled:"disabled", text:"Wait for steady…"});
+  var man = el("div", {style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"}); var ni = el("input", {type:"number", min:"0", max:"359", placeholder:"e.g. 128", "aria-label":"Degrees", style:"width:110px"});
+  man.append(el("span", {class:"small muted", text:"Or type degrees:"}), ni, el("button", {class:"btn2", type:"button", text:"Use", style:"width:auto;padding:0 16px", onclick:function(){ var x = Number(ni.value); if (ni.value === "" || !(x >= 0 && x < 360)) { ni.focus(); return; } P.heading = x; P.source = "manual"; goP(4); }}));
+  var slot = el("div");
+  view.append(pill, rd, dial, use, man, slot, el("button", {class:"btn2", type:"button", text:"Back", onclick:function(){ P.mode = "door"; goP(2); }}));
+  use.onclick = function(){ P.heading = Math.round(heading("flat")); P.source = C.live ? (C.sunFixed ? "phone, sun-checked" : "phone compass") : "set by hand"; goP(4); };
+  C.listeners.push(function(){
+    var h = heading("flat"), s = cstatus("flat"); pill.innerHTML = statusPill("flat");
+    if (C.none && !C.live && !slot.firstChild) slot.append(manualSlider());
+    if (h === null) return;
+    $("pdeg").textContent = (s[0] === "amber" ? "~" : "") + Math.round(h) + "°"; $("pzone").textContent = INFO[z8(h)].name + " · " + INFO[z8(h)].deity;
+    turnDial(dial, h, st); use.disabled = !s[2]; use.textContent = s[2] ? "Use " + Math.round(h) + "° · " + INFO[z8(h)].name : "Wait for steady…";
+  });
+  if (!C.started) { startCompass(); calibrate(); } else emit();
+}
+function planStep4(){
+  var rooms = P.labels.filter(inside), out = P.labels.length - rooms.length;
+  view.append(stepsBar(4), el("span", {class:"eyebrow", text:"Floor plan check · 4 of 5"}), el("h1", {text:"Are these rooms right?"}),
+    el("p", {class:"muted", text:rooms.length + " rooms found" + (out ? " · " + out + " outside your walls left out" : "") + ". Fix names, remove extras, or tap the plan to add a missed room."}));
+  var v = planView({zones:true, chips:rooms.map(function(l){ return {x:l.x, y:l.y, text:l.name, style:l.type === "bedroom" ? "border-color:#D98A1E;background:#FFF1D6;color:#8A4A00" : ""}; })});
+  v.addEventListener("click", function(e){ var q = toImg(e, v); if (!inside(q)) return; P.labels.push({id:++P.uid, name:"New room", type:"other", x:q.x, y:q.y}); goP(4); });
+  view.append(v);
+  rooms.forEach(function(l){
+    var row = el("div", {class:"rm"}), sel = el("select", {"aria-label":"Room type for " + l.name});
+    TYPES.forEach(function(t){ var o = el("option", {value:t[0], text:t[1]}); if (t[0] === l.type) o.selected = true; sel.append(o); });
+    sel.onchange = function(){ l.type = sel.value; if (l.name === "New room" || /^bed/i.test(l.name)) l.name = TNAME[l.type].replace(" (choose which)", ""); goP(4); };
+    row.append(el("span", {class:"nm", text:l.name}), sel, el("button", {class:"x", type:"button", "aria-label":"Remove " + l.name, text:"✕", onclick:function(){ P.labels = P.labels.filter(function(m){ return m !== l; }); goP(4); }}));
+    if (l.type === "bedroom") row.append(el("span", {class:"flag", text:"Choose Children's or Guest bedroom so it can be scored."}));
+    view.append(row);
+  });
+  view.append(el("button", {class:"btn", type:"button", text:"Looks right · See my result", onclick:function(){ goP(5); }}), el("button", {class:"btn2", type:"button", text:"Back to direction", onclick:function(){ goP(3); }}));
+}
+function evaluatePlan(){
+  var b = P.box, w = b.x1 - b.x0, h = b.y1 - b.y0, cx = w / 2, cy = h / 2, byKey = {}, range = {};
+  RULES.forEach(function(r){ byKey[r[1] + "|" + r[2]] = r; var g = range[r[1]] || {best:-Infinity, worst:0}; g.best = Math.max(g.best, r[4]); g.worst = Math.min(g.worst, r[4]); range[r[1]] = g; });
+  var things = []; if (P.door) things.push({name:"Main entrance", type:"main_entrance", px:Math.max(0, Math.min(w, P.door.x - b.x0)), py:Math.max(0, Math.min(h, P.door.y - b.y0)), x:P.door.x, y:P.door.y});
+  P.labels.filter(inside).forEach(function(l){ things.push({name:l.name, type:l.type, px:l.x - b.x0, py:l.y - b.y0, x:l.x, y:l.y}); });
+  var rooms = things.map(function(t){
+    var central = t.type !== "main_entrance" && Math.abs(t.px - cx) <= w / 6 && Math.abs(t.py - cy) <= h / 6;
+    var bear = central ? null : n360(Math.atan2(t.px - cx, cy - t.py) * 180 / Math.PI + P.heading), zone = bear === null ? "C" : z8(bear);
+    var rule = byKey[t.type + "|" + zone], pct = null;
+    if (rule && rule[3] !== "disputed") { var g = range[t.type]; pct = g.best === g.worst ? 1 : (rule[4] - g.worst) / (g.best - g.worst); }
+    var edge = bear === null ? 99 : Math.abs(((n360(bear - 22.5) + 22.5) % 45) - 22.5);
+    return {name:t.name, type:t.type, x:t.x, y:t.y, zone:zone, status:rule ? rule[3] : "none", pct:pct, near:!!(rule && edge < 8), nearC:!central && t.type !== "main_entrance" && Math.abs(t.px - cx) <= w / 6 * 1.15 && Math.abs(t.py - cy) <= h / 6 * 1.15};
+  });
+  var sc = rooms.filter(function(r){ return r.pct !== null; });
+  return {rooms:rooms, score:sc.length ? Math.round(100 * sc.reduce(function(a, r){ return a + r.pct; }, 0) / sc.length) : null};
+}
+function remediesFor(r){
+  var s = REMEDIES.slice().sort(function(a, b){ return a[3] - b[3] || (a[0] < b[0] ? -1 : 1); }), key = r.type === "main_entrance" ? "entrance" : r.type + "_" + r.zone.toLowerCase();
+  var p = s.filter(function(x){ return x[1] === key && !x[4]; }); s.filter(function(x){ return x[1] === "general" && !x[4]; }).forEach(function(x){ if (p.length < 3) p.push(x); });
+  var c = s.filter(function(x){ return x[1] === "structural"; })[0]; if (c) p.push(c); return p;
+}
+var SC = {ideal:["Ideal","var(--good)","var(--good-bg)"], acceptable:["Okay","var(--ok)","var(--ok-bg)"], avoid:["Avoid","var(--bad)","var(--bad-bg)"], disputed:["Not scored","var(--none)","var(--none-bg)"], none:["Not scored","var(--none)","var(--none-bg)"], C:["",""]};
+function planStep5(){
+  var res = evaluatePlan(), v = res.score, cnt = {ideal:0, acceptable:0, avoid:0}; res.rooms.forEach(function(r){ if (cnt[r.status] != null) cnt[r.status]++; });
+  view.append(stepsBar(5), el("span", {class:"eyebrow", text:"Floor plan check · result"}), el("h1", {text:P.sample ? "Sample 2 BHK, read for Vastu" : "Your plan, read for Vastu"}));
+  view.append(el("div", {style:"display:flex;gap:16px;align-items:center"}, '<svg width="118" height="118" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v) + '"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="7"/><circle cx="66" cy="66" r="54" fill="none" stroke="#C9A05A" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 3.393 * v).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="74" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="' + (v == null ? 26 : 46) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="94" text-anchor="middle" font-family="Manrope" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">OF 100</text></svg><div class="small" style="display:flex;flex-direction:column;gap:3px"><b style="font-size:14px">Plan top faces ' + P.heading + '° · ' + INFO[z8(P.heading)].name + '</b><span class="muted">Direction: ' + esc(P.source || "") + '</span><span><b style="color:var(--good)">' + cnt.ideal + ' ideal</b> · <b style="color:var(--ok)">' + cnt.acceptable + ' okay</b> · <b style="color:var(--bad)">' + cnt.avoid + ' avoid</b></span></div>'));
+  view.append(planView({zones:true, noDoor:true, chips:res.rooms.map(function(r){ var s = SC[r.status]; return {x:r.x, y:r.y, text:r.name + " · " + r.zone, style:"border-color:" + s[1] + ";color:" + s[1] + ";background:" + s[2]}; })}));
+  var list = el("div", {class:"card", style:"padding:4px"});
+  res.rooms.forEach(function(r){ var s = SC[r.status], row = el("div", {class:"res"}); row.append(el("b", {text:r.name, style:"font-size:14px;min-width:0"}), el("span", {class:"small muted", style:"font-weight:700", text:r.zone === "C" ? "Centre" : INFO[r.zone].name}), el("span", {class:"st", style:"background:" + s[2] + ";color:" + s[1], text:s[0]}));
+    if (r.near) row.append(el("span", {class:"flag", text:"Close to a zone border: check with the expert."}));
+    if (r.nearC) row.append(el("span", {class:"flag", text:"Close to the centre (Brahmasthan): check with the expert."}));
+    if (r.type === "bedroom") row.append(el("span", {class:"flag", style:"color:var(--muted)", text:"Not scored: choose Children's or Guest bedroom in step 4."}));
+    list.append(row); });
+  view.append(list);
+  res.rooms.filter(function(r){ return r.status === "avoid"; }).forEach(function(r){
+    var c = el("div", {class:"card"}); c.append(el("div", {style:"display:flex;justify-content:space-between;gap:8px;align-items:center"}, '<h2 style="font-size:20px">' + esc(r.name) + ' in the ' + (r.zone === "C" ? "Centre" : INFO[r.zone].name) + '</h2><span class="st" style="background:var(--bad-bg);color:var(--bad)">Avoid</span>'));
+    remediesFor(r).forEach(function(x, i){ c.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span>' + esc(x[2]) + '</span>')); });
+    c.append(el("b", {style:"color:var(--good);font-size:13px", text:"No demolition needed."})); view.append(c);
+  });
+  view.append(el("p", {class:"small muted", text:"Score = how well each room's zone matches the rule book, averaged over rooms that can be scored. Rules and remedies are drafts pending the expert's approval. Vastu can't guarantee wealth, health or success."}),
+    el("div", {class:"row2"}, null));
+  view.lastChild.append(el("button", {class:"btn2", type:"button", text:"Change direction", onclick:function(){ goP(3); }}), el("button", {class:"btn2", type:"button", text:"Edit rooms", onclick:function(){ goP(4); }}));
+  view.append(el("button", {class:"btn", type:"button", text:"Check another plan", onclick:function(){ resetPlan(); goP(1); }}));
+}
+
+// ======================================================================= ROOM CAMERA CHECK
+var R = {step:"type", room:"office", photo:null, heading:null, time:null, taps:{}, ans:{}};
+var ROOMS = [["office","Office / cabin"],["bedroom","Bedroom"],["kitchen","Kitchen"],["living","Living room"],["entrance","Entrance"]];
+var KEYITEM = {office:["seat","Tap the seat you work from"], bedroom:["bed","Tap the head end of your bed"], kitchen:["stove","Tap the stove"], living:["heavy","Tap the heaviest furniture (sofa, TV unit)"], entrance:["door","Tap the main door"]};
+function Room(){ ({type:roomType, cam:roomCam, tap:roomTap, ask:roomAsk, result:roomResult})[R.step](); }
+function goR(s){ R.step = s; view.textContent = ""; window.scrollTo(0, 0); C.listeners = []; if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; } Room(); }
+function roomType(){
+  view.append(el("span", {class:"eyebrow", text:"Room check"}), el("h1", {text:"Which room is this?"}), el("p", {class:"muted", text:"Stand at the door and point the camera into the room. The phone's compass is saved with the photo."}));
+  var ch = el("div", {class:"chips"});
+  ROOMS.forEach(function(r){ ch.append(el("button", {class:"chip", type:"button", "aria-pressed":String(R.room === r[0]), text:r[1], onclick:function(){ R.room = r[0]; goR("type"); }})); });
+  view.append(ch, el("button", {class:"btn", type:"button", text:"Open the camera", onclick:function(){ goR("cam"); }}),
+    el("button", {class:"btn2", type:"button", text:"Try the sample office photo", onclick:function(){ R.room = "office"; R.photo = "sample_room.jpg"; R.heading = 268; R.time = new Date(); R.source = "sample (camera faced West)"; R.taps = {seat:{x:.49, y:.40}}; R.ans = {faces:"toward", back:"wall", mirror:"no", dustbin:"yes", cables:"yes", clutter:"medium", light:"ok"}; goR("result"); }}));
+}
+function roomCam(){
+  var cam = el("div", {class:"cam"}), video = el("video", {playsinline:"", autoplay:"", muted:""}); video.muted = true;
+  cam.append(video, el("div", {class:"shade"}));
+  var top = el("div", {class:"camtop"}, '<span class="ctag">' + ROOMS.filter(function(r){ return r[0] === R.room; })[0][1].toUpperCase() + '</span><span class="deg" id="rdeg">—°</span><b id="rzone"></b><span id="rpill"></span><span class="ctag" style="font-weight:700">' + esc(locText()) + '</span>');
+  var bot = el("div", {class:"cambot"});
+  var shut = el("button", {class:"shut", type:"button", "aria-label":"Take photo"});
+  var slot = el("div");
+  bot.append(slot, el("div", {style:"display:flex;align-items:center;justify-content:space-between;padding:0 18px"}, null));
+  var row = bot.lastChild; row.append(el("span", {style:"width:60px;font-size:11px;font-weight:700", text:"Upright · steady"}), shut, el("span", {style:"width:60px;font-size:11px;font-weight:700;text-align:right", text:"Direction saved"}));
+  cam.append(top, bot, el("button", {class:"close", type:"button", "aria-label":"Close camera", text:"✕", onclick:function(){ goR("type"); }}));
+  document.body.append(cam);
+  var stream = null;
+  cleanup = function(){ cam.remove(); if (stream) stream.getTracks().forEach(function(t){ t.stop(); }); };
+  (async function(){
+    try { stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}, width:{ideal:1280}}, audio:false}); video.srcObject = stream; }
+    catch (e) { slot.append(el("p", {class:"err", text:"The camera couldn't start. Allow camera access for this app, or try the sample photo."})); }
+  })();
+  if (!C.started) startCompass();
+  C.listeners.push(function(){
+    var h = heading("up"), s = cstatus("up");
+    $("rpill").innerHTML = statusPill("up", true);
+    if (C.none && !C.live && !slot.querySelector("input")) { var ms = manualSlider(); ms.style.background = "rgba(0,0,0,.55)"; ms.style.color = "#fff"; slot.append(ms); }
+    if (h !== null) { $("rdeg").textContent = (s[0] === "amber" ? "~" : "") + Math.round(h) + "°"; $("rzone").textContent = "Camera facing " + INFO[z8(h)].name + " · " + INFO[z8(h)].deity; }
+    var ok = s[2] && !!stream;
+    shut.style.cssText = ok ? "background:linear-gradient(#F6E3B4,#E2BF7A 50%,#C9A05A);box-shadow:0 0 0 5px rgba(255,255,255,.95),0 0 0 7px var(--g-live)" : "background:rgba(255,255,255,.22);box-shadow:0 0 0 5px rgba(255,255,255,.4),0 0 0 7px var(--a-live)";
+    shut.innerHTML = ok ? '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1F160A" stroke-width="1.8"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>' : "🔒";
+    shut.disabled = !ok;
+  });
+  shut.onclick = function(){
+    if (shut.disabled) return;
+    var cv = document.createElement("canvas"), w = video.videoWidth, h = video.videoHeight, k = Math.min(1, 1280 / Math.max(w, h)); cv.width = w * k; cv.height = h * k;
+    cv.getContext("2d").drawImage(video, 0, 0, cv.width, cv.height);
+    R.photo = cv.toDataURL("image/jpeg", .85); R.heading = Math.round(heading("up")); R.time = new Date(); R.source = C.live ? (C.sunFixed ? "phone compass, sun-checked" : "phone compass, steady, upright") : "set by hand";
+    R.taps = {}; R.ans = {}; buzz(40); goR("tap");
+  };
+}
+function roomTap(){
+  var key = KEYITEM[R.room];
+  view.append(el("span", {class:"eyebrow", text:"Room check · mark your photo"}), el("h1", {text:key[1]}), el("p", {class:"muted", text:"Then tap any of these if you see them: mirror, dustbin, loose cables. Skip what isn't there."}));
+  var cur = key[0], btns = el("div", {class:"chips"});
+  [[key[0], "Main item"],["mirror","Mirror"],["dustbin","Dustbin"],["cables","Loose cables"]].forEach(function(x){ btns.append(el("button", {class:"chip", type:"button", "aria-pressed":String(cur === x[0]), "data-k":x[0], text:x[1] + (R.taps[x[0]] ? " ✓" : ""), onclick:function(){ cur = x[0]; btns.querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-k") === cur)); }); }})); });
+  var shot = el("div", {class:"shot"}); shot.append(el("img", {src:R.photo, alt:"Your room photo"}));
+  function pins(){ shot.querySelectorAll(".pin").forEach(function(p){ p.remove(); }); Object.keys(R.taps).forEach(function(k){ var t = R.taps[k]; shot.append(el("span", {class:"pin", style:"left:" + t.x * 100 + "%;top:" + t.y * 100 + "%;transform:translate(-50%,-50%);background:#D98A1E", text:k === key[0] ? "★" : k})); }); }
+  shot.addEventListener("click", function(e){ var r = shot.getBoundingClientRect(); R.taps[cur] = {x:(e.clientX - r.left) / r.width, y:(e.clientY - r.top) / r.height}; pins(); btns.querySelector('[data-k="' + cur + '"]').textContent = (cur === key[0] ? "Main item" : cur[0].toUpperCase() + cur.slice(1).replace("cables", "Loose cables").replace("Cables","Loose cables")) + " ✓"; });
+  pins();
+  view.append(btns, shot, el("button", {class:"btn", type:"button", text:"Next: 4 quick questions", onclick:function(){ goR("ask"); }}), el("button", {class:"btn2", type:"button", text:"Retake photo", onclick:function(){ goR("cam"); }}));
+}
+function roomAsk(){
+  var Q = [];
+  if (R.room === "office") Q.push(["faces","When you sit there, which way do you face?",[["toward","Toward the camera"],["away","Away from the camera"],["left","To the photo's left"],["right","To the photo's right"]]],["back","What is behind your seat?",[["wall","A solid wall"],["door","The door"],["window","A window"],["open","Open space"]]]);
+  if (R.room === "bedroom") Q.push(["head","The bed's head is against which wall?",[["away","The far wall"],["left","The left wall"],["right","The right wall"],["toward","The wall behind me"]]]);
+  if (R.room === "kitchen") Q.push(["faces","When you cook, which way do you face?",[["toward","Toward the camera"],["away","Away from the camera"],["left","To the photo's left"],["right","To the photo's right"]]],["sink","Are the stove and sink side by side?",[["yes","Yes"],["no","No"]]]);
+  Q.push(["clutter","How cluttered is the room?",[["low","Tidy"],["medium","A bit"],["high","Very"]]],["light","How bright is it in the day?",[["bright","Bright"],["ok","Okay"],["dim","Dim"]]]);
+  view.append(el("span", {class:"eyebrow", text:"Room check · quick questions"}), el("h1", {text:"A few questions about this room"}));
+  Q.forEach(function(q){
+    var box = el("div", {class:"q"}); box.append(el("b", {text:q[1]}));
+    var ch = el("div", {class:"chips"}); q[2].forEach(function(o){ ch.append(el("button", {class:"chip", type:"button", "aria-pressed":String(R.ans[q[0]] === o[0]), text:o[1], onclick:function(){ R.ans[q[0]] = o[0]; ch.querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed", String(b === this)); }, this); }})); });
+    box.append(ch); view.append(box);
+  });
+  view.append(el("button", {class:"btn", type:"button", text:"See my room's Vastu", onclick:function(){ R.ans.mirror = R.taps.mirror ? "yes" : "no"; R.ans.dustbin = R.taps.dustbin ? "yes" : "no"; R.ans.cables = R.taps.cables ? "yes" : "no"; goR("result"); }}));
+}
+function roomEval(){
+  var hd = R.heading, a = R.ans, good = [], fix = [], key = null, pins = [];
+  function dirOf(rel){ return n360(hd + ({away:0, right:90, toward:180, left:270})[rel]); }
+  function zoneOfTap(t){ var dx = (t.x - .5) * 2, dy = Math.max(.05, (.65 - t.y) / .45); return z8(hd + Math.atan2(dx, dy) * 180 / Math.PI); }
+  var main = R.taps[KEYITEM[R.room][0]];
+  if ((R.room === "office") && a.faces) {
+    var z = z8(dirOf(a.faces)); key = {label:"Best seating direction for work", you:z, ideal:["E","N"]};
+    if (z === "E" || z === "N") { good.push(["You face " + INFO[z].name + ".", "Facing East or North while working is the traditional ideal."]); if (main) pins.push([main, "good", "You face " + INFO[z].name + " ✓"]); }
+    else { fix.push(["Turn your seat to face North or East.", "Keep a solid wall behind you."]); if (main) pins.push([main, "fix", "You face " + INFO[z].name]); }
+    if (main) { var sz = zoneOfTap(main); if (sz === "SW" || sz === "W") good.push(["Seat in the " + INFO[sz].name + " part of the room,", "a traditional place for the owner's seat."]); }
+    if (a.back === "wall") good.push(["Solid wall behind your seat,", "not the door."]); if (a.back === "door") fix.push(["Don't sit with your back to the door.", "Turn the desk so you can see the entrance."]);
+  }
+  if (R.room === "bedroom" && a.head) { var bz = z8(dirOf(a.head)); key = {label:"Best direction for your bed's head", you:bz, ideal:["S","E"]};
+    if (bz === "S" || bz === "E") { good.push(["Bed head toward " + INFO[bz].name + ".", "South or East is the traditional head position."]); if (main) pins.push([main, "good", "Head " + INFO[bz].name + " ✓"]); }
+    else { fix.push(["Move the bed so its head is toward South or East.", "Keep it against a solid wall."]); if (main) pins.push([main, "fix", "Head " + INFO[bz].name]); } }
+  if (R.room === "kitchen") {
+    if (a.faces) { var cz = z8(dirOf(a.faces)); key = {label:"Best direction to face while cooking", you:cz, ideal:["E"]}; if (cz === "E") good.push(["You cook facing East,", "the traditional choice."]); else fix.push(["Cook facing East if practical,", "for example by moving the stove along the counter."]); }
+    if (main) { var stz = zoneOfTap(main); if (stz === "SE") { good.push(["Stove in the South-East,", "the fire zone."]); pins.push([main, "good", "Stove SE ✓"]); } else { fix.push(["Move the stove toward the South-East if you can.", "Your stove looks " + INFO[stz].name + "."]); pins.push([main, "fix", "Stove " + stz]); } }
+    if (a.sink === "yes") fix.push(["Keep the stove and sink apart,", "not side by side."]);
+  }
+  if (R.room === "living" && main) { var hz = zoneOfTap(main); if (["S","SW","W"].indexOf(hz) >= 0) { good.push(["Heavy furniture toward " + INFO[hz].name + ",", "as Vastu suggests."]); pins.push([main, "good", "Heavy " + hz + " ✓"]); } else { fix.push(["Move heavy furniture toward South or West.", "Keep the North-East light and open."]); pins.push([main, "fix", "Heavy " + hz]); } }
+  if (R.room === "entrance") { var ez = z8(hd + 0); good.push(["Entrance photographed facing " + INFO[ez].name + ".", "Keep it bright, clean and uncluttered."]); }
+  if (a.mirror === "yes") { fix.push(["Move or cover the mirror", "if it faces the bed or the door."]); pins.push([R.taps.mirror, "fix", "Mirror"]); } else good.push(["No mirror facing the bed or door.", ""]);
+  if (a.dustbin === "yes") { fix.push(["Move the dustbin away from the doorway.", "Vastu suggests no dustbins near an entrance."]); pins.push([R.taps.dustbin, "fix", "Dustbin"]); }
+  if (a.cables === "yes") { fix.push(["Tidy the loose cables.", "Clip them along the wall or use a cable box."]); pins.push([R.taps.cables, "fix", "Loose cables"]); }
+  if (a.clutter === "medium" || a.clutter === "high") fix.push(["Clear the surfaces.", "Clearing clutter is the first Vastu remedy."]); else if (a.clutter === "low") good.push(["Tidy and uncluttered.", ""]);
+  if (a.light === "dim") fix.push(["Add more light.", "Vastu favours bright, airy rooms."]); else if (a.light === "bright") good.push(["Bright room.", ""]);
+  return {good:good, fix:fix, key:key, pins:pins};
+}
+function roomResult(){
+  var r = roomEval(), z = z8(R.heading);
+  view.append(el("span", {class:"eyebrow", text:"Room check · result"}), el("h1", {text:"Your room, read for Vastu"}), el("p", {class:"muted", text:r.good.length + " things are good · " + r.fix.length + " small fixes · no demolition needed"}));
+  var shot = el("div", {class:"shot"}); shot.append(el("img", {src:R.photo, alt:"Your room with Vastu notes"}));
+  r.pins.forEach(function(p){ if (!p[0]) return; var tx = p[0].x < .3 ? "0" : p[0].x > .7 ? "-100%" : "-50%"; shot.append(el("span", {class:"pin", style:"left:" + Math.min(97, Math.max(3, p[0].x * 100)) + "%;top:" + Math.min(76, Math.max(6, p[0].y * 100)) + "%;transform:translate(" + tx + ",-50%);background:" + (p[1] === "good" ? "var(--good)" : "#D98A1E"), text:p[2]})); });
+  shot.append(el("div", {class:"stamp"}, '<b>Facing ' + INFO[z].name + ' · ' + R.heading + '°</b><span>' + esc(R.source || "") + '</span><span>' + R.time.toLocaleString("en-IN", {day:"numeric", month:"short", year:"numeric", hour:"numeric", minute:"2-digit"}) + (C.pos ? " · " + esc(locText()) : "") + '</span>'));
+  view.append(shot);
+  if (r.key) {
+    view.append(el("span", {class:"lbl", text:r.key.label}));
+    var g = el("div", {style:"display:grid;grid-template-columns:1fr 1fr;gap:8px"});
+    ["E","N","W","S"].forEach(function(d){ var ideal = r.key.ideal.indexOf(d) >= 0, you = r.key.you === d, col = ideal ? "var(--good)" : "var(--gold-deep)";
+      g.append(el("div", {class:"card", style:"padding:10px 12px;gap:2px;color:" + col + (you ? ";border:2px solid currentColor;background:" + (ideal ? "var(--good-bg)" : "var(--warn-bg)") : "")}, '<b style="letter-spacing:.14em;font-size:13px">' + INFO[d].name.toUpperCase() + (you ? ' · YOU' : '') + '</b><span style="color:var(--ink);font-size:12.5px">' + (ideal ? "Ideal" : "Less preferred") + '</span>')); });
+    view.append(g);
+    if (["E","N","W","S"].indexOf(r.key.you) < 0) view.append(el("p", {class:"small muted", text:"You face " + INFO[r.key.you].name + ", between the main directions."}));
+  }
+  var gc = el("div", {class:"card"}); gc.append(el("h2", {text:"What's already good"})); r.good.forEach(function(x){ gc.append(el("div", {class:"item"}, '<span class="num" style="background:var(--good-bg);color:var(--good)">✓</span><span><b>' + esc(x[0]) + '</b> ' + esc(x[1]) + '</span>')); });
+  var fc = el("div", {class:"card", style:"background:linear-gradient(#FFFDF6,#FBF0D8)"}); fc.append(el("h2", {text: r.fix.length ? r.fix.length + " simple fixes" : "Nothing to fix"})); if (!r.fix.length) fc.append(el("p", {class:"muted", text:"This room already follows the main Vastu suggestions we check."})); r.fix.forEach(function(x, i){ fc.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span><b>' + esc(x[0]) + '</b> ' + esc(x[1]) + '</span>')); }); fc.append(el("b", {style:"color:var(--good);font-size:13px", text:"No demolition needed."}));
+  view.append(gc, fc, el("p", {class:"small muted", text:"Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules are drafts pending the expert's approval."}),
+    el("button", {class:"btn", type:"button", text:"Check another room", onclick:function(){ R.photo = null; goR("type"); }}));
+}
+
+// ======================================================================= start
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function(){});
+route();
+})();
+</script>
+</body>
+</html>
