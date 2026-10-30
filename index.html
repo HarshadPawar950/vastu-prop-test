@@ -69,6 +69,8 @@ details.roomc>summary{display:grid;grid-template-columns:1fr auto auto auto;gap:
 details.roomc>summary::-webkit-details-marker{display:none}
 details.roomc>summary::after{content:"›";color:var(--gold-deep);font-size:20px;transition:transform .2s}
 details.roomc[open]>summary::after{transform:rotate(90deg)}
+details.roomc>.flag,details.roomc>.lbl{display:block}
+details.roomc>*+*{margin-top:8px}
 .recent{display:flex;flex-direction:column;gap:8px}
 .chk{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;text-decoration:none;color:var(--ink);cursor:pointer;text-align:left;font:inherit;width:100%}
 .chk .sc{width:50px;height:50px;border-radius:25px;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:var(--gold-deep);background:var(--gold-soft)}
@@ -737,28 +739,54 @@ function remediesFor(r){
   var c = s.filter(function(x){ return x[1] === "structural"; })[0]; if (c) p.push(c); return p;
 }
 var SC = {ideal:["Ideal","var(--good)","var(--good-bg)"], acceptable:["Okay","var(--ok)","var(--ok-bg)"], avoid:["Avoid","var(--bad)","var(--bad-bg)"], disputed:["Not scored","var(--none)","var(--none-bg)"], none:["Not scored","var(--none)","var(--none-bg)"], C:["",""]};
+function verdict(v){ return v == null ? ["Not scored yet","var(--none)","var(--none-bg)"] : v >= 60 ? ["Good","var(--good)","var(--good-bg)"] : v >= 35 ? ["Fair","var(--ok)","var(--ok-bg)"] : ["Needs care","var(--bad)","var(--bad-bg)"]; }
+// one clear action per room: the room's own remedy first, else a plain general one
+function firstFix(r){ var f = remediesFor(r).filter(function(x){ return x[1] !== "general" && x[1] !== "structural"; })[0]; return f ? f[2] : "Keep it clean, bright and clutter-free"; }
+function roomDetails(r){
+  var s = SC[r.status], bz = bestZones(r.type), c = el("details", {class:"card roomc"});
+  c.append(el("summary", null, '<b style="font-size:15px;min-width:0">' + esc(r.name) + '</b><span class="small muted" style="font-weight:700">' + (r.zone === "C" ? "Centre" : INFO[r.zone].name) + '</span><span class="st" style="background:' + s[2] + ';color:' + s[1] + '">' + s[0] + '</span>'));
+  c.append(el("p", {style:"margin:0;font-size:14px;color:#4E4232", text:roomWhy(r)}));
+  if (bz.ideal.length || bz.ok.length) c.append(el("div", {class:"small"}, (bz.ideal.length ? '<span style="color:var(--good);font-weight:800">Best: ' + bz.ideal.map(zoneName).join(", ") + '</span>' : '') + (bz.ok.length ? '<span class="muted" style="font-weight:700"> · Also okay: ' + bz.ok.map(zoneName).join(", ") + '</span>' : '')));
+  if (r.near) c.append(el("span", {class:"flag", text:"Close to a zone border: check with the expert."}));
+  if (r.nearC) c.append(el("span", {class:"flag", text:"Close to the centre (Brahmasthan): check with the expert."}));
+  if (r.status === "avoid" || r.status === "acceptable") {
+    c.append(el("span", {class:"lbl", text:r.status === "avoid" ? "Simple fixes" : "To make it even better"}));
+    remediesFor(r).forEach(function(x, i){ c.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span>' + esc(x[2]) + '</span>')); });
+    c.append(el("b", {style:"color:var(--good);font-size:13px", text:"No demolition needed."}));
+  }
+  return c;
+}
 function planStep5(){
-  var res = evaluatePlan(), v = res.score, cnt = {ideal:0, acceptable:0, avoid:0}; res.rooms.forEach(function(r){ if (cnt[r.status] != null) cnt[r.status]++; });
-  view.append(stepsBar(5), el("span", {class:"eyebrow", text:"Floor plan check · result"}), el("h1", {text:P.sample ? "Sample 2 BHK, read for Vastu" : "Your plan, read for Vastu"}));
-  view.append(el("div", {style:"display:flex;gap:16px;align-items:center"}, '<svg width="118" height="118" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v) + '"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="7"/><circle cx="66" cy="66" r="54" fill="none" stroke="#C9A05A" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 3.393 * v).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="74" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="' + (v == null ? 26 : 46) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="94" text-anchor="middle" font-family="Manrope" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">MAX ' + MAX_SCORE + '</text></svg><div class="small" style="display:flex;flex-direction:column;gap:3px"><b style="font-size:14px">Plan top faces ' + P.heading + '° · ' + INFO[z8(P.heading)].name + '</b><span class="muted">Direction: ' + esc(P.source || "") + '</span><span><b style="color:var(--good)">' + cnt.ideal + ' ideal</b> · <b style="color:var(--ok)">' + cnt.acceptable + ' okay</b> · <b style="color:var(--bad)">' + cnt.avoid + ' avoid</b></span></div>'));
+  var res = evaluatePlan(), v = res.score, vd = verdict(v), cnt = {ideal:0, acceptable:0, avoid:0}; res.rooms.forEach(function(r){ if (cnt[r.status] != null) cnt[r.status]++; });
+  var ORDER = {avoid:0, acceptable:1, ideal:2}, scored = res.rooms.filter(function(r){ return ORDER[r.status] != null; }).sort(function(a, b){ return ORDER[a.status] - ORDER[b.status]; });
+  var unscored = res.rooms.filter(function(r){ return ORDER[r.status] == null; }), fixes = res.rooms.filter(function(r){ return r.status === "avoid"; });
+  view.append(stepsBar(5), el("span", {class:"eyebrow", text:P.sample ? "Sample 2 BHK · result" : "Floor plan · result"}));
+  // 1. the answer, in one glance
+  var hero = el("div", {class:"card", style:"flex-direction:row;align-items:center;gap:16px;background:linear-gradient(#FFFDF6,#FBF0D8)"});
+  hero.innerHTML = '<svg width="104" height="104" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v + " of " + MAX_SCORE) + '" style="flex:none"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="8"/><circle cx="66" cy="66" r="54" fill="none" stroke="' + (v == null || (v >= 35 && v < 60) ? "#C9A05A" : v >= 60 ? "#3F7D4E" : "#B5523B") + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 339.3 * v / MAX_SCORE).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="74" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="' + (v == null ? 26 : 48) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="94" text-anchor="middle" font-family="Manrope" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">OF ' + MAX_SCORE + '</text></svg>'
+    + '<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="st" style="align-self:flex-start;font-size:13px;background:' + vd[2] + ';color:' + vd[1] + '">' + vd[0] + '</span>'
+    + '<b style="font-size:17px;line-height:1.3">' + (fixes.length ? fixes.length + (fixes.length === 1 ? " room needs a simple fix" : " rooms need simple fixes") : "No room needs a fix") + '</b>'
+    + '<span class="small" style="color:#4E4232"><b style="color:var(--good)">' + cnt.ideal + ' good</b> · <b style="color:var(--ok)">' + cnt.acceptable + ' okay</b> · <b style="color:var(--bad)">' + cnt.avoid + ' need fixes</b></span>'
+    + '<span class="small muted">No demolition needed.</span></div>';
+  view.append(hero);
+  // 2. what to do first
+  var todo = el("div", {class:"card"}); todo.append(el("h2", {text:fixes.length ? "Do these first" : "Keep it this way"}));
+  if (fixes.length) fixes.slice(0, 3).forEach(function(r, i){ todo.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span><b>' + esc(r.name) + '</b> <span class="muted">(' + zoneName(r.zone) + ')</span><br>' + esc(firstFix(r)) + '</span>')); });
+  else todo.append(el("p", {class:"muted", style:"margin:0", text:"Your rooms sit in suitable zones. Keep them clean, bright and clutter-free."}));
+  if (fixes.length > 3) todo.append(el("span", {class:"small muted", text:"+" + (fixes.length - 3) + " more in Your rooms below."}));
+  view.append(todo);
+  // 3. the plan with zones
   view.append(planView({zones:true, noDoor:true, chips:res.rooms.map(function(r){ var s = SC[r.status]; return {x:r.x, y:r.y, text:r.name + " · " + r.zone, style:"border-color:" + s[1] + ";color:" + s[1] + ";background:" + s[2]}; })}));
-  view.append(el("div", {class:"card", style:"padding:12px 14px;gap:4px;background:linear-gradient(#FFFDF6,#FBF0D8)"}, '<b style="font-size:14px">' + (v == null ? "Not enough rooms to score yet" : "Score " + v + " of a possible " + MAX_SCORE) + '</b><span class="small" style="color:#4E4232">Based on ' + res.scored + ' of ' + res.total + ' rooms. ' + (res.scored < res.total ? (res.total - res.scored) + ' not scored (no rule yet or needs a choice). ' : '') + 'Zone placement is one part of Vastu, so no home reads as 100%: the highest possible is ' + MAX_SCORE + '.</span>'));
-  var ORDER = {avoid:0, acceptable:1, ideal:2, disputed:3, none:4};
-  view.append(el("h2", {text:"Room by room"}));
-  res.rooms.slice().sort(function(a, b){ return ORDER[a.status] - ORDER[b.status]; }).forEach(function(r){
-    var s = SC[r.status], bz = bestZones(r.type), c = el("details", {class:"card roomc", open:r.status === "avoid" ? "open" : null});
-    c.append(el("summary", null, '<b style="font-size:15.5px;min-width:0">' + esc(r.name) + '</b><span class="small muted" style="font-weight:700">' + (r.zone === "C" ? "Centre" : INFO[r.zone].name) + '</span><span class="st" style="background:' + s[2] + ';color:' + s[1] + '">' + s[0] + '</span>'));
-    c.append(el("p", {style:"margin:0;font-size:14px;color:#4E4232", text:roomWhy(r)}));
-    if (bz.ideal.length || bz.ok.length) c.append(el("div", {class:"small"}, (bz.ideal.length ? '<span style="color:var(--good);font-weight:800">Best: ' + bz.ideal.map(zoneName).join(", ") + '</span>' : '') + (bz.ok.length ? '<span class="muted" style="font-weight:700"> · Also okay: ' + bz.ok.map(zoneName).join(", ") + '</span>' : '')));
-    if (r.near) c.append(el("span", {class:"flag", text:"Close to a zone border: check with the expert."}));
-    if (r.nearC) c.append(el("span", {class:"flag", text:"Close to the centre (Brahmasthan): check with the expert."}));
-    if (r.status === "avoid" || r.status === "acceptable") {
-      c.append(el("span", {class:"lbl", text:r.status === "avoid" ? "Simple fixes" : "To make it even better"}));
-      remediesFor(r).forEach(function(x, i){ c.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span>' + esc(x[2]) + '</span>')); });
-      c.append(el("b", {style:"color:var(--good);font-size:13px", text:"No demolition needed."}));
-    }
-    view.append(c);
-  });
+  // 4. details on tap
+  view.append(el("div", {style:"display:flex;justify-content:space-between;align-items:baseline"}, '<h2>Your rooms</h2><span class="small muted">Tap a room for the why and fixes</span>'));
+  scored.forEach(function(r){ view.append(roomDetails(r)); });
+  if (unscored.length) {
+    var u = el("details", {class:"card roomc"});
+    u.append(el("summary", null, '<b style="font-size:15px">' + unscored.length + ' not scored yet</b><span class="small muted" style="font-weight:700">' + esc(unscored.map(function(r){ return r.name; }).join(", ")).slice(0, 34) + (unscored.map(function(r){ return r.name; }).join(", ").length > 34 ? "…" : "") + '</span><span></span>'));
+    unscored.forEach(function(r){ u.append(el("p", {style:"margin:0;font-size:13.5px;color:#4E4232"}, '<b>' + esc(r.name) + ' · ' + esc(zoneName(r.zone)) + ':</b> ' + esc(roomWhy(r)))); });
+    view.append(u);
+  }
+  view.append(el("p", {class:"small muted", text:"Based on " + res.scored + " of " + res.total + " rooms. Plan top faces " + P.heading + "° " + INFO[z8(P.heading)].name + " (" + (P.source || "") + ")."}));
   view.append(el("p", {class:"small muted", text:"Score = how well each room's zone matches the rule book, averaged over rooms that can be scored, out of a highest possible " + MAX_SCORE + ". Rules and remedies are drafts pending the expert's approval. Vastu can't guarantee wealth, health or success."}),
     el("div", {class:"row2"}, null));
   view.lastChild.append(el("button", {class:"btn2", type:"button", text:"Change direction", onclick:function(){ goP(3); }}), el("button", {class:"btn2", type:"button", text:"Edit rooms", onclick:function(){ goP(4); }}));
