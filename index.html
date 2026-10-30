@@ -71,6 +71,15 @@ details.roomc>summary::after{content:"›";color:var(--gold-deep);font-size:20px
 details.roomc[open]>summary::after{transform:rotate(90deg)}
 details.roomc>span{display:block}
 details.roomc>*+*{margin-top:8px}
+details.glance{border-top:1px solid var(--line)}
+details.glance>summary,.glance-row{display:grid;grid-template-columns:1fr 1.1fr auto;gap:10px;align-items:center;padding:10px 0;cursor:pointer;list-style:none;font-size:14.5px}
+.glance-row{border-top:1px solid var(--line);cursor:default}
+details.glance>summary::-webkit-details-marker{display:none}
+details.glance>summary>span:first-of-type,.glance-row>span:first-of-type{color:#4E4232;font-size:14px;line-height:1.25}
+.zgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.zc{min-height:74px;border:1.5px solid var(--line);border-radius:12px;background:#fff;padding:6px 7px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.zc .zl{font-size:10.5px;font-weight:800;letter-spacing:.12em;color:var(--muted)}
+.zc .zr{font-size:12.5px;line-height:1.25;overflow-wrap:anywhere}
 .recent{display:flex;flex-direction:column;gap:8px}
 .chk{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;text-decoration:none;color:var(--ink);cursor:pointer;text-align:left;font:inherit;width:100%}
 .chk .sc{width:50px;height:50px;border-radius:25px;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:var(--gold-deep);background:var(--gold-soft)}
@@ -395,7 +404,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.2.4 · 30 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
+  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.2.5 · 30 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -427,7 +436,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.2.4 · 30 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.2.5 · 30 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -771,53 +780,79 @@ function roomDetails(r){
   }
   return c;
 }
+var SHORT = {N:"N",NE:"NE",E:"E",SE:"SE",S:"S",SW:"SW",W:"W",NW:"NW",C:"Centre"};
+var RANK = {avoid:0, acceptable:1, ideal:2, disputed:3, none:4};
+function stPill(st){ var s = SC[st] || SC.none; return '<span class="st" style="background:' + s[2] + ';color:' + s[1] + '">' + s[0] + '</span>'; }
 function planStep5(){
-  var res = evaluatePlan(), v = res.score, vd = verdict(v), cnt = {ideal:0, acceptable:0, avoid:0}; res.rooms.forEach(function(r){ if (cnt[r.status] != null) cnt[r.status]++; });
-  var ORDER = {avoid:0, acceptable:1, ideal:2}, scored = res.rooms.filter(function(r){ return ORDER[r.status] != null; }).sort(function(a, b){ return ORDER[a.status] - ORDER[b.status]; });
-  var unscored = res.rooms.filter(function(r){ return ORDER[r.status] == null; }), fixes = res.rooms.filter(function(r){ return r.status === "avoid"; });
-  view.append(stepsBar(5), el("span", {class:"eyebrow", text:P.sample ? "Sample 2 BHK · result" : "Floor plan · result"}));
-  // 1. the answer, in one glance
-  var hero = el("div", {class:"card", style:"flex-direction:row;align-items:center;gap:16px;background:linear-gradient(#FFFDF6,#FBF0D8)"});
-  hero.innerHTML = '<svg width="104" height="104" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v + " of " + MAX_SCORE) + '" style="flex:none"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="8"/><circle cx="66" cy="66" r="54" fill="none" stroke="' + (v == null || (v >= 35 && v < 60) ? "#C9A05A" : v >= 60 ? "#3F7D4E" : "#B5523B") + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 339.3 * v / MAX_SCORE).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="74" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="' + (v == null ? 26 : 48) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="94" text-anchor="middle" font-family="Manrope" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">OF ' + MAX_SCORE + '</text></svg>'
-    + '<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="st" style="align-self:flex-start;font-size:13px;background:' + vd[2] + ';color:' + vd[1] + '">' + vd[0] + '</span>'
-    + '<b style="font-size:17px;line-height:1.3">' + (fixes.length ? fixes.length + (fixes.length === 1 ? " room needs a simple fix" : " rooms need simple fixes") : "No room needs a fix") + '</b>'
-    + '<span class="small" style="color:#4E4232"><b style="color:var(--good)">' + cnt.ideal + ' good</b> · <b style="color:var(--ok)">' + cnt.acceptable + ' okay</b> · <b style="color:var(--bad)">' + cnt.avoid + ' need fixes</b></span>'
-    + '<span class="small muted">' + (fixes.length ? esc(fixes.map(function(r){ return r.name; }).slice(0, 3).join(", ")) + (fixes.length === 1 ? " is" : " are") + ' in less preferred zones. Small changes inside the room help; no demolition.' : 'Rooms sit in suitable zones.') + '</span></div>';
-  view.append(hero);
-  view.append(el("div", {class:"card", style:"flex-direction:row;gap:10px;align-items:flex-start;padding:12px 14px;border-color:var(--gold);background:#FFF8E6"}, '<span aria-hidden="true" style="font-size:18px;line-height:1.2">ⓘ</span><span class="small" style="color:#4E4232"><b>Quick reading. This result is not 100% correct.</b> It reads room placement from your plan only. For full clarity, a Vastu consultant review is coming soon.</span>'));
-  // 2. what to do first
+  var res = evaluatePlan(), v = res.score, vd = verdict(v), rooms = res.rooms;
+  var door = rooms.filter(function(r){ return r.type === "main_entrance"; })[0];
+  view.append(stepsBar(5), el("span", {class:"eyebrow", text:(P.sample ? "Sample 2 BHK" : "Your floor plan") + " · quick reading"}));
+
+  // 1. the answer
+  var col = v == null || (v >= 35 && v < 60) ? "#C9A05A" : v >= 60 ? "#2F7D4F" : "#A8432E";
+  view.append(el("div", {class:"card", style:"flex-direction:row;align-items:center;gap:16px;background:linear-gradient(#FFFDF6,#FBF0D8)"},
+    '<svg width="96" height="96" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v + " of " + MAX_SCORE) + '" style="flex:none"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="9"/><circle cx="66" cy="66" r="54" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 339.3 * v / MAX_SCORE).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="76" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="' + (v == null ? 26 : 50) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="96" text-anchor="middle" font-family="Manrope" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">OF ' + MAX_SCORE + '</text></svg>'
+    + '<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="st" style="align-self:flex-start;font-size:14px;background:' + vd[2] + ';color:' + vd[1] + '">' + vd[0] + '</span>'
+    + '<b style="font-size:16px;line-height:1.35">Main door: ' + (door ? INFO[door.zone] ? INFO[door.zone].name : "Centre" : "not marked") + '<br>Plan top faces: ' + INFO[z8(P.heading)].name + '</b></div>'));
+
+  // 2. home at a glance: one row per kind of room, grouped (e.g. all toilets together)
+  var groups = [], byType = {};
+  var LABEL = {main_entrance:"Main door", kitchen:"Kitchen", master_bedroom:"Master bedroom", children_bedroom:"Children's bedroom", guest_bedroom:"Guest bedroom", bedroom:"Bedroom", living_room:"Living room", dining:"Dining", toilet:"Toilets", pooja:"Pooja", study:"Study", storage:"Storage", staircase:"Staircase"};
+  rooms.forEach(function(r){ if (OPEN[r.type]) return; var k = r.type; if (!byType[k]) { byType[k] = {type:k, label:LABEL[k] || TNAME[k] || r.name, list:[]}; groups.push(byType[k]); } byType[k].list.push(r); });
+  var ORDERT = ["main_entrance","kitchen","master_bedroom","living_room","dining","toilet","children_bedroom","guest_bedroom","bedroom","pooja","study","storage","staircase"];
+  groups.sort(function(a, b){ return ORDERT.indexOf(a.type) - ORDERT.indexOf(b.type); });
+  var g = el("div", {class:"card", style:"padding:6px 14px 10px"}); g.append(el("h2", {text:"Your home at a glance", style:"margin:8px 0 2px"}));
+  groups.forEach(function(gr){
+    var worst = gr.list.slice().sort(function(a, b){ return RANK[a.status] - RANK[b.status]; })[0], bz = bestZones(gr.type);
+    var zones = gr.list.map(function(r){ return zoneName(r.zone).replace(" (Brahmasthan)", ""); }).filter(function(z, i, a){ return a.indexOf(z) === i; }).join(", ");
+    var d = el("details", {class:"glance"});
+    d.append(el("summary", null, '<b>' + esc(gr.label) + '</b><span>' + esc(zones) + (worst.status === "avoid" && bz.ideal.length ? '<br><small style="color:var(--good);font-weight:800">best: ' + bz.ideal.map(function(z){ return SHORT[z]; }).join(", ") + '</small>' : '') + '</span>' + (gr.type === "bedroom" ? '<span class="st" style="background:var(--gold-soft);color:var(--gold-deep)">Choose</span>' : stPill(worst.status))));
+    if (gr.type === "bedroom") {
+      gr.list.forEach(function(r){ var row = el("div", {class:"chips", style:"padding:4px 0 8px"}); row.append(el("span", {class:"small muted", style:"width:100%", text:"Which bedroom is \"" + r.name + "\"?"}));
+        [["master_bedroom","Master"],["children_bedroom","Children's"],["guest_bedroom","Guest"]].forEach(function(t){ row.append(el("button", {class:"chip", type:"button", text:t[1], onclick:function(){ if (r.lab) { r.lab.type = t[0]; P.savedId = null; } goP(5); }})); });
+        d.append(row); });
+    } else {
+      d.append(el("p", {class:"small", style:"margin:0 0 6px;color:#4E4232", text:roomWhy(worst)}));
+      if (worst.status === "avoid" || worst.status === "acceptable") roomFixes(worst).slice(0, 2).forEach(function(x){ d.append(el("div", {class:"small", style:"padding:2px 0 2px 14px;position:relative"}, '<span style="position:absolute;left:0;color:var(--gold-deep)">•</span>' + esc(x))); });
+    }
+    g.append(d);
+  });
+  var centre = rooms.filter(function(r){ return r.zone === "C" && r.type !== "main_entrance"; });
+  var cOpen = centre.every(function(r){ return OPEN[r.type]; });
+  g.append(el("div", {class:"glance-row"}, '<b>Centre</b><span>' + (centre.length ? esc(centre.map(function(r){ return r.name; }).join(", ")) : "Open") + '</span>' + (cOpen ? '<span class="st" style="background:var(--good-bg);color:var(--good)">Open ✓</span>' : '<span class="st" style="background:var(--warn-bg);color:var(--warn)">Keep light</span>')));
+  g.append(el("span", {class:"small muted", style:"display:block;padding-top:4px", text:"Tap a row for the reason and fixes."}));
+  view.append(g);
+
+  // 3. what sits in each direction (North at the top)
+  var cells = {}; ["NW","N","NE","W","C","E","SW","S","SE"].forEach(function(z){ cells[z] = []; });
+  rooms.forEach(function(r){ cells[r.zone].push(r); });
+  var grid = el("div", {class:"card", style:"padding:12px"}); grid.append(el("h2", {text:"What sits in each direction", style:"margin:2px 2px 4px"}));
+  var gg = el("div", {class:"zgrid"});
+  ["NW","N","NE","W","C","E","SW","S","SE"].forEach(function(z){
+    var list = cells[z], worst = list.filter(function(r){ return RANK[r.status] < 3; }).sort(function(a, b){ return RANK[a.status] - RANK[b.status]; })[0];
+    var tone = worst ? SC[worst.status] : null;
+    gg.append(el("div", {class:"zc", style:tone ? "border-color:" + tone[1] + ";background:" + tone[2] : ""}, '<span class="zl">' + (z === "C" ? "CENTRE" : z) + '</span>' + (list.length ? list.map(function(r){ var bad = r.status === "avoid"; return '<span class="zr"' + (bad ? ' style="color:var(--bad);font-weight:800"' : '') + '>' + esc(r.type === "main_entrance" ? "Main door" : r.name) + (bad ? " ✗" : r.status === "ideal" ? " ✓" : "") + '</span>'; }).join("") : '<span class="zr muted">—</span>')));
+  });
+  grid.append(gg, el("span", {class:"small muted", style:"display:block;padding:6px 2px 0", text:"✓ ideal · ✗ avoid · North is at the top, whatever way your plan was drawn."}));
+  view.append(grid);
+
+  // 4. do these first
+  var fixes = rooms.filter(function(r){ return r.status === "avoid"; });
   var todo = el("div", {class:"card"}); todo.append(el("h2", {text:fixes.length ? "Do these first" : "Keep it this way"}));
-  if (fixes.length) fixes.slice(0, 3).forEach(function(r, i){ todo.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span><b>' + esc(r.name) + '</b> <span class="muted">(' + zoneName(r.zone) + ')</span><br>' + esc(firstFix(r)) + '</span>')); });
+  if (fixes.length) fixes.slice(0, 3).forEach(function(r, i){ todo.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span><b>' + esc(r.type === "main_entrance" ? "Main door" : r.name) + ':</b> ' + esc(firstFix(r)) + '</span>')); });
   else todo.append(el("p", {class:"muted", style:"margin:0", text:"Your rooms sit in suitable zones. Keep them clean, bright and clutter-free."}));
-  if (fixes.length > 3) todo.append(el("span", {class:"small muted", text:"+" + (fixes.length - 3) + " more in Your rooms below."}));
+  todo.append(el("span", {class:"small", style:"color:var(--good);font-weight:800", text:"No demolition needed."}));
   view.append(todo);
-  // 3. the plan with zones
-  view.append(planView({zones:true, noDoor:true, chips:res.rooms.map(function(r){ var s = SC[r.status]; return {x:r.x, y:r.y, text:r.name + " · " + r.zone, style:"border-color:" + s[1] + ";color:" + s[1] + ";background:" + s[2]}; })}));
-  // 4. details on tap
-  view.append(el("div", {style:"display:flex;justify-content:space-between;align-items:baseline"}, '<h2>Your rooms</h2><span class="small muted">Tap a room for the why and fixes</span>'));
-  scored.forEach(function(r){ view.append(roomDetails(r)); });
-  var choose = unscored.filter(function(r){ return r.type === "bedroom"; }), open = unscored.filter(function(r){ return OPEN[r.type]; });
-  var other = unscored.filter(function(r){ return r.type !== "bedroom" && !OPEN[r.type]; });
-  choose.forEach(function(r){
-    var c = el("div", {class:"card", style:"border-color:var(--gold)"}, '<b style="font-size:15px">Which bedroom is "' + esc(r.name) + '"? <span class="small muted">(' + esc(zoneName(r.zone)) + ')</span></b><span class="small muted">Pick one to include it in your score.</span>');
-    var row = el("div", {class:"chips"});
-    [["master_bedroom","Master"],["children_bedroom","Children's"],["guest_bedroom","Guest"]].forEach(function(t){ row.append(el("button", {class:"chip", type:"button", text:t[1], onclick:function(){ if (r.lab) { r.lab.type = t[0]; P.savedId = null; } goP(5); }})); });
-    c.append(row); view.append(c);
-  });
-  if (other.length) { var d = el("details", {class:"card roomc"}); d.append(el("summary", null, '<b style="font-size:15px">' + other.length + ' for the expert</b><span class="small muted" style="font-weight:700">' + esc(other.map(function(r){ return r.name; }).join(", ")) + '</span><span></span>')); other.forEach(function(r){ d.append(el("p", {style:"margin:0;font-size:13.5px;color:#4E4232"}, '<b>' + esc(r.name) + ' · ' + esc(zoneName(r.zone)) + ':</b> ' + esc(roomWhy(r)))); }); view.append(d); }
-  if (open.length) view.append(el("p", {class:"small muted", style:"margin:0"}, '<b>Open areas, not scored:</b> ' + esc(open.map(function(r){ return r.name; }).join(", ")) + '. Vastu zone rules cover rooms, not passages, balconies or decks.'));
-  var cov = el("div", {class:"card"});
-  cov.append(el("h2", {text:"What this quick check covers"}));
-  [["y","Which zone each room sits in"],["y","Main entrance direction"],["y","First simple fixes"],["n","Exact entrance position (pada) and door details"],["n","Inside each room: bed, stove, desk, mirrors, colours"],["n","Building facing, floor level, balconies and lift"],["n","Plot shape, slope and surroundings"],["n","A full, personal remedy plan"]].forEach(function(x){
-    cov.append(el("div", {class:"small", style:"display:flex;gap:8px;align-items:flex-start;color:" + (x[0] === "y" ? "var(--ink)" : "var(--muted)")}, '<b style="width:18px;flex:none;text-align:center;color:' + (x[0] === "y" ? "var(--good)" : "var(--muted)") + '">' + (x[0] === "y" ? "✓" : "–") + '</b><span>' + x[1] + (x[0] === "n" ? " <i>(consultant, coming soon)</i>" : "") + '</span>'));
-  });
-  view.append(cov);
-  view.append(el("div", {class:"card", style:"background:linear-gradient(#FFFDF6,#FBF0D8);border-color:var(--gold)"}, '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Want full clarity?</h2><span class="st" style="background:var(--gold-soft);color:var(--gold-deep)">Coming soon</span></div><p class="small" style="margin:0;color:#4E4232">Vastu consultant review is coming in a future update. A consultant will check everything this quick reading can\'t, and give remedies made for your home. No demolition-first advice.</p><button class="btn" type="button" disabled style="opacity:.55;cursor:default">Ask a Vastu consultant · coming soon</button>'));
-  view.append(el("p", {class:"small muted", text:"Score based on " + res.scored + " of " + (res.total - open.length) + " rooms (open areas left out). Plan top faces " + P.heading + "° " + INFO[z8(P.heading)].name + " (" + (P.source || "") + ")."}));
-  view.append(el("p", {class:"small muted", text:"Score = how well each room's zone matches the rule book, averaged over rooms that can be scored, out of a highest possible " + MAX_SCORE + ". Rules and remedies are drafts pending the expert's approval. Vastu can't guarantee wealth, health or success."}),
-    el("div", {class:"row2"}, null));
-  view.lastChild.append(el("button", {class:"btn2", type:"button", text:"Change direction", onclick:function(){ goP(3); }}), el("button", {class:"btn2", type:"button", text:"Edit rooms", onclick:function(){ goP(4); }}));
+
+  // 5. the plan itself, on tap
+  var pv = el("details", {class:"card roomc"}); pv.append(el("summary", null, '<b style="font-size:15px">See it on your plan</b><span></span><span></span>'));
+  pv.append(planView({zones:true, noDoor:true, chips:rooms.map(function(r){ var sc = SC[r.status]; return {x:r.x, y:r.y, text:r.name + " · " + r.zone, style:"border-color:" + sc[1] + ";color:" + sc[1] + ";background:" + sc[2]}; })}));
+  view.append(pv);
+
+  view.append(el("p", {class:"small muted", style:"margin:0;text-align:center", text:"Quick reading, not 100% correct. Vastu consultant review is coming soon."}));
   view.append(saveButton(!!P.savedId, function(){ return savePlan(res); }), el("button", {class:"btn", type:"button", text:"Check another plan", onclick:function(){ resetPlan(); goP(1); }}));
+  view.append(el("div", {class:"small", style:"display:flex;justify-content:center;gap:18px"}, null));
+  view.lastChild.append(el("a", {href:"javascript:void 0", style:"color:var(--gold-deep);font-weight:700", text:"Change direction", onclick:function(){ goP(3); }}), el("a", {href:"javascript:void 0", style:"color:var(--gold-deep);font-weight:700", text:"Edit rooms", onclick:function(){ goP(4); }}));
 }
 
 // ======================================================================= ROOM CAMERA CHECK
