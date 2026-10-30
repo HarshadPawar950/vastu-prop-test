@@ -65,6 +65,10 @@ p{margin:0}
 .iconbtn{width:44px;height:44px;border-radius:22px;border:1px solid var(--line);background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;color:var(--gold-deep);text-decoration:none}
 .dialwrap{position:relative;isolation:isolate}
 .dialwrap::before{content:"";position:absolute;inset:-50px -30px;z-index:-1;border-radius:50%;background:radial-gradient(circle,#fff 0%,rgba(255,251,240,.85) 24%,rgba(233,201,135,.2) 48%,rgba(251,246,236,0) 68%)}
+details.roomc>summary{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;cursor:pointer;list-style:none}
+details.roomc>summary::-webkit-details-marker{display:none}
+details.roomc>summary::after{content:"›";color:var(--gold-deep);font-size:20px;transition:transform .2s}
+details.roomc[open]>summary::after{transform:rotate(90deg)}
 .recent{display:flex;flex-direction:column;gap:8px}
 .chk{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;text-decoration:none;color:var(--ink);cursor:pointer;text-align:left;font:inherit;width:100%}
 .chk .sc{width:50px;height:50px;border-radius:25px;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:var(--gold-deep);background:var(--gold-soft)}
@@ -386,7 +390,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.1 · 28 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
+  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.2 · 30 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -418,7 +422,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.1 · 28 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.2 · 30 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -704,7 +708,28 @@ function evaluatePlan(){
     return {name:t.name, type:t.type, x:t.x, y:t.y, zone:zone, status:rule ? rule[3] : "none", pct:pct, near:!!(rule && edge < 8), nearC:!central && t.type !== "main_entrance" && Math.abs(t.px - cx) <= w / 6 * 1.15 && Math.abs(t.py - cy) <= h / 6 * 1.15};
   });
   var sc = rooms.filter(function(r){ return r.pct !== null; });
-  return {rooms:rooms, score:sc.length ? Math.round(100 * sc.reduce(function(a, r){ return a + r.pct; }, 0) / sc.length) : null};
+  // MAX_SCORE: zone placement is only one part of Vastu, so no plan reads as "100% Vastu".
+  var raw = sc.length ? sc.reduce(function(a, r){ return a + r.pct; }, 0) / sc.length : null;
+  return {rooms:rooms, scored:sc.length, total:rooms.length, score:raw === null ? null : Math.round(MAX_SCORE * raw)};
+}
+var MAX_SCORE = 85;
+function zoneName(z){ return z === "C" ? "Centre (Brahmasthan)" : INFO[z].name; }
+// best and okay zones for a room type, straight from the rule book
+function bestZones(type){
+  var t = type === "bedroom" ? null : type, ideal = [], ok = [];
+  RULES.forEach(function(r){ if (r[1] !== t) return; if (r[3] === "ideal") ideal.push(r[2]); else if (r[3] === "acceptable") ok.push(r[2]); });
+  return {ideal:ideal, ok:ok};
+}
+function roomWhy(r){
+  var nm = TNAME[r.type] || r.name, z = r.zone, zi = z === "C" ? null : INFO[z], bz = bestZones(r.type);
+  var zl = z === "C" ? "The centre (Brahmasthan) is kept open and light in Vastu." : zi.name + " (" + zi.deity + ") is linked with " + zi.theme + (zi.el ? ", element " + zi.el[0].split(" · ")[0].toLowerCase() : "") + ".";
+  var best = bz.ideal.length ? bz.ideal.map(zoneName).join(", ") : "";
+  if (r.status === "ideal") return zl + " That suits a " + nm.toLowerCase() + ", so this is a good placement.";
+  if (r.status === "acceptable") return zl + " A " + nm.toLowerCase() + " is fine here" + (best ? ", though " + best + " is the first choice." : ".");
+  if (r.status === "avoid") return zl + " Traditional Vastu doesn't place a " + nm.toLowerCase() + " here" + (best ? "; the preferred zone is " + best + "." : ".") + " Simple fixes below help without any building work.";
+  if (r.status === "disputed") return "Vastu sources disagree about a " + nm.toLowerCase() + " in " + zoneName(z) + ", so we don't score it. The expert will advise.";
+  if (r.type === "bedroom") return "Choose Children's or Guest bedroom in step 4 so we can read this room.";
+  return "Our rule book has no rule yet for a " + nm.toLowerCase() + " in " + zoneName(z) + ", so it isn't scored.";
 }
 function remediesFor(r){
   var s = REMEDIES.slice().sort(function(a, b){ return a[3] - b[3] || (a[0] < b[0] ? -1 : 1); }), key = r.type === "main_entrance" ? "entrance" : r.type + "_" + r.zone.toLowerCase();
@@ -715,21 +740,26 @@ var SC = {ideal:["Ideal","var(--good)","var(--good-bg)"], acceptable:["Okay","va
 function planStep5(){
   var res = evaluatePlan(), v = res.score, cnt = {ideal:0, acceptable:0, avoid:0}; res.rooms.forEach(function(r){ if (cnt[r.status] != null) cnt[r.status]++; });
   view.append(stepsBar(5), el("span", {class:"eyebrow", text:"Floor plan check · result"}), el("h1", {text:P.sample ? "Sample 2 BHK, read for Vastu" : "Your plan, read for Vastu"}));
-  view.append(el("div", {style:"display:flex;gap:16px;align-items:center"}, '<svg width="118" height="118" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v) + '"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="7"/><circle cx="66" cy="66" r="54" fill="none" stroke="#C9A05A" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 3.393 * v).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="74" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="' + (v == null ? 26 : 46) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="94" text-anchor="middle" font-family="Manrope" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">OF 100</text></svg><div class="small" style="display:flex;flex-direction:column;gap:3px"><b style="font-size:14px">Plan top faces ' + P.heading + '° · ' + INFO[z8(P.heading)].name + '</b><span class="muted">Direction: ' + esc(P.source || "") + '</span><span><b style="color:var(--good)">' + cnt.ideal + ' ideal</b> · <b style="color:var(--ok)">' + cnt.acceptable + ' okay</b> · <b style="color:var(--bad)">' + cnt.avoid + ' avoid</b></span></div>'));
+  view.append(el("div", {style:"display:flex;gap:16px;align-items:center"}, '<svg width="118" height="118" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v) + '"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="7"/><circle cx="66" cy="66" r="54" fill="none" stroke="#C9A05A" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 3.393 * v).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="74" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="' + (v == null ? 26 : 46) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="94" text-anchor="middle" font-family="Manrope" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">MAX ' + MAX_SCORE + '</text></svg><div class="small" style="display:flex;flex-direction:column;gap:3px"><b style="font-size:14px">Plan top faces ' + P.heading + '° · ' + INFO[z8(P.heading)].name + '</b><span class="muted">Direction: ' + esc(P.source || "") + '</span><span><b style="color:var(--good)">' + cnt.ideal + ' ideal</b> · <b style="color:var(--ok)">' + cnt.acceptable + ' okay</b> · <b style="color:var(--bad)">' + cnt.avoid + ' avoid</b></span></div>'));
   view.append(planView({zones:true, noDoor:true, chips:res.rooms.map(function(r){ var s = SC[r.status]; return {x:r.x, y:r.y, text:r.name + " · " + r.zone, style:"border-color:" + s[1] + ";color:" + s[1] + ";background:" + s[2]}; })}));
-  var list = el("div", {class:"card", style:"padding:4px"});
-  res.rooms.forEach(function(r){ var s = SC[r.status], row = el("div", {class:"res"}); row.append(el("b", {text:r.name, style:"font-size:14px;min-width:0"}), el("span", {class:"small muted", style:"font-weight:700", text:r.zone === "C" ? "Centre" : INFO[r.zone].name}), el("span", {class:"st", style:"background:" + s[2] + ";color:" + s[1], text:s[0]}));
-    if (r.near) row.append(el("span", {class:"flag", text:"Close to a zone border: check with the expert."}));
-    if (r.nearC) row.append(el("span", {class:"flag", text:"Close to the centre (Brahmasthan): check with the expert."}));
-    if (r.type === "bedroom") row.append(el("span", {class:"flag", style:"color:var(--muted)", text:"Not scored: choose Children's or Guest bedroom in step 4."}));
-    list.append(row); });
-  view.append(list);
-  res.rooms.filter(function(r){ return r.status === "avoid"; }).forEach(function(r){
-    var c = el("div", {class:"card"}); c.append(el("div", {style:"display:flex;justify-content:space-between;gap:8px;align-items:center"}, '<h2 style="font-size:20px">' + esc(r.name) + ' in the ' + (r.zone === "C" ? "Centre" : INFO[r.zone].name) + '</h2><span class="st" style="background:var(--bad-bg);color:var(--bad)">Avoid</span>'));
-    remediesFor(r).forEach(function(x, i){ c.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span>' + esc(x[2]) + '</span>')); });
-    c.append(el("b", {style:"color:var(--good);font-size:13px", text:"No demolition needed."})); view.append(c);
+  view.append(el("div", {class:"card", style:"padding:12px 14px;gap:4px;background:linear-gradient(#FFFDF6,#FBF0D8)"}, '<b style="font-size:14px">' + (v == null ? "Not enough rooms to score yet" : "Score " + v + " of a possible " + MAX_SCORE) + '</b><span class="small" style="color:#4E4232">Based on ' + res.scored + ' of ' + res.total + ' rooms. ' + (res.scored < res.total ? (res.total - res.scored) + ' not scored (no rule yet or needs a choice). ' : '') + 'Zone placement is one part of Vastu, so no home reads as 100%: the highest possible is ' + MAX_SCORE + '.</span>'));
+  var ORDER = {avoid:0, acceptable:1, ideal:2, disputed:3, none:4};
+  view.append(el("h2", {text:"Room by room"}));
+  res.rooms.slice().sort(function(a, b){ return ORDER[a.status] - ORDER[b.status]; }).forEach(function(r){
+    var s = SC[r.status], bz = bestZones(r.type), c = el("details", {class:"card roomc", open:r.status === "avoid" ? "open" : null});
+    c.append(el("summary", null, '<b style="font-size:15.5px;min-width:0">' + esc(r.name) + '</b><span class="small muted" style="font-weight:700">' + (r.zone === "C" ? "Centre" : INFO[r.zone].name) + '</span><span class="st" style="background:' + s[2] + ';color:' + s[1] + '">' + s[0] + '</span>'));
+    c.append(el("p", {style:"margin:0;font-size:14px;color:#4E4232", text:roomWhy(r)}));
+    if (bz.ideal.length || bz.ok.length) c.append(el("div", {class:"small"}, (bz.ideal.length ? '<span style="color:var(--good);font-weight:800">Best: ' + bz.ideal.map(zoneName).join(", ") + '</span>' : '') + (bz.ok.length ? '<span class="muted" style="font-weight:700"> · Also okay: ' + bz.ok.map(zoneName).join(", ") + '</span>' : '')));
+    if (r.near) c.append(el("span", {class:"flag", text:"Close to a zone border: check with the expert."}));
+    if (r.nearC) c.append(el("span", {class:"flag", text:"Close to the centre (Brahmasthan): check with the expert."}));
+    if (r.status === "avoid" || r.status === "acceptable") {
+      c.append(el("span", {class:"lbl", text:r.status === "avoid" ? "Simple fixes" : "To make it even better"}));
+      remediesFor(r).forEach(function(x, i){ c.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span>' + esc(x[2]) + '</span>')); });
+      c.append(el("b", {style:"color:var(--good);font-size:13px", text:"No demolition needed."}));
+    }
+    view.append(c);
   });
-  view.append(el("p", {class:"small muted", text:"Score = how well each room's zone matches the rule book, averaged over rooms that can be scored. Rules and remedies are drafts pending the expert's approval. Vastu can't guarantee wealth, health or success."}),
+  view.append(el("p", {class:"small muted", text:"Score = how well each room's zone matches the rule book, averaged over rooms that can be scored, out of a highest possible " + MAX_SCORE + ". Rules and remedies are drafts pending the expert's approval. Vastu can't guarantee wealth, health or success."}),
     el("div", {class:"row2"}, null));
   view.lastChild.append(el("button", {class:"btn2", type:"button", text:"Change direction", onclick:function(){ goP(3); }}), el("button", {class:"btn2", type:"button", text:"Edit rooms", onclick:function(){ goP(4); }}));
   view.append(saveButton(!!P.savedId, function(){ return savePlan(res); }), el("button", {class:"btn", type:"button", text:"Check another plan", onclick:function(){ resetPlan(); goP(1); }}));

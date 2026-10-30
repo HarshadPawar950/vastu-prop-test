@@ -1,5 +1,5 @@
 // Vastu Compass offline support: keep the app files so it opens without internet.
-const CACHE = "vastu-prop-test-v1-1-28oct";
+const CACHE = "vastu-prop-test-v1-2-30oct";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "sample_plan.jpg", "sample_room.jpg", "assets/mandala.svg", "assets/cream.svg", "fonts/cormorant-600.woff2", "fonts/manrope-400.woff2", "fonts/manrope-500.woff2", "fonts/manrope-600.woff2", "fonts/manrope-700.woff2", "fonts/manrope-800.woff2"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))); self.clients.claim(); });
