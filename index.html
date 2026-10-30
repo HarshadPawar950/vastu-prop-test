@@ -69,7 +69,7 @@ details.roomc>summary{display:grid;grid-template-columns:1fr auto auto auto;gap:
 details.roomc>summary::-webkit-details-marker{display:none}
 details.roomc>summary::after{content:"›";color:var(--gold-deep);font-size:20px;transition:transform .2s}
 details.roomc[open]>summary::after{transform:rotate(90deg)}
-details.roomc>.flag,details.roomc>.lbl{display:block}
+details.roomc>span{display:block}
 details.roomc>*+*{margin-top:8px}
 .recent{display:flex;flex-direction:column;gap:8px}
 .chk{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;text-decoration:none;color:var(--ink);cursor:pointer;text-align:left;font:inherit;width:100%}
@@ -395,7 +395,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.2.2 · 30 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
+  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.2.3 · 30 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -427,7 +427,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.2.2 · 30 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.2.3 · 30 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -764,7 +764,9 @@ function roomDetails(r){
   if (r.nearC) c.append(el("span", {class:"flag", text:"Close to the centre (Brahmasthan): check with the expert."}));
   if (r.status === "avoid" || r.status === "acceptable") {
     c.append(el("span", {class:"lbl", text:r.status === "avoid" ? "Simple fixes" : "To make it even better"}));
-    roomFixes(r).forEach(function(x, i){ c.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span>' + esc(x) + '</span>')); });
+    var fx = roomFixes(r);
+    fx.slice(0, 2).forEach(function(x, i){ c.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span>' + esc(x) + '</span>')); });
+    c.append(el("span", {class:"small", style:"color:var(--gold-deep);font-weight:700", text:"More fixes for this room, and the exact placement inside it, come with a consultant review."}));
     c.append(el("span", {class:"small muted", text:"No demolition needed. For any structural change, consult an architect or engineer first."}));
   }
   return c;
@@ -782,6 +784,7 @@ function planStep5(){
     + '<span class="small" style="color:#4E4232"><b style="color:var(--good)">' + cnt.ideal + ' good</b> · <b style="color:var(--ok)">' + cnt.acceptable + ' okay</b> · <b style="color:var(--bad)">' + cnt.avoid + ' need fixes</b></span>'
     + '<span class="small muted">' + (fixes.length ? esc(fixes.map(function(r){ return r.name; }).slice(0, 3).join(", ")) + (fixes.length === 1 ? " is" : " are") + ' in less preferred zones. Small changes inside the room help; no demolition.' : 'Rooms sit in suitable zones.') + '</span></div>';
   view.append(hero);
+  view.append(el("div", {class:"card", style:"flex-direction:row;gap:10px;align-items:flex-start;padding:12px 14px;border-color:var(--gold);background:#FFF8E6"}, '<span aria-hidden="true" style="font-size:18px;line-height:1.2">ⓘ</span><span class="small" style="color:#4E4232"><b>Quick reading. This result is not 100% correct.</b> It reads room placement from your plan only. For full clarity, a Vastu consultant should review your home.</span>'));
   // 2. what to do first
   var todo = el("div", {class:"card"}); todo.append(el("h2", {text:fixes.length ? "Do these first" : "Keep it this way"}));
   if (fixes.length) fixes.slice(0, 3).forEach(function(r, i){ todo.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span><b>' + esc(r.name) + '</b> <span class="muted">(' + zoneName(r.zone) + ')</span><br>' + esc(firstFix(r)) + '</span>')); });
@@ -803,6 +806,14 @@ function planStep5(){
   });
   if (other.length) { var d = el("details", {class:"card roomc"}); d.append(el("summary", null, '<b style="font-size:15px">' + other.length + ' for the expert</b><span class="small muted" style="font-weight:700">' + esc(other.map(function(r){ return r.name; }).join(", ")) + '</span><span></span>')); other.forEach(function(r){ d.append(el("p", {style:"margin:0;font-size:13.5px;color:#4E4232"}, '<b>' + esc(r.name) + ' · ' + esc(zoneName(r.zone)) + ':</b> ' + esc(roomWhy(r)))); }); view.append(d); }
   if (open.length) view.append(el("p", {class:"small muted", style:"margin:0"}, '<b>Open areas, not scored:</b> ' + esc(open.map(function(r){ return r.name; }).join(", ")) + '. Vastu zone rules cover rooms, not passages, balconies or decks.'));
+  var cov = el("div", {class:"card"});
+  cov.append(el("h2", {text:"What this quick check covers"}));
+  [["y","Which zone each room sits in"],["y","Main entrance direction"],["y","First simple fixes"],["n","Exact entrance position (pada) and door details"],["n","Inside each room: bed, stove, desk, mirrors, colours"],["n","Building facing, floor level, balconies and lift"],["n","Plot shape, slope and surroundings"],["n","A full, personal remedy plan"]].forEach(function(x){
+    cov.append(el("div", {class:"small", style:"display:flex;gap:8px;align-items:flex-start;color:" + (x[0] === "y" ? "var(--ink)" : "var(--muted)")}, '<b style="width:18px;flex:none;text-align:center;color:' + (x[0] === "y" ? "var(--good)" : "var(--muted)") + '">' + (x[0] === "y" ? "✓" : "–") + '</b><span>' + x[1] + (x[0] === "n" ? " <i>(consultant)</i>" : "") + '</span>'));
+  });
+  view.append(cov);
+  var sum = "Vastu Prop quick check: score " + (v == null ? "-" : v) + " of " + MAX_SCORE + ", plan top faces " + P.heading + " deg. Rooms: " + res.rooms.map(function(r){ return r.name + " " + r.zone + " " + (SC[r.status] || ["?"])[0]; }).join("; ") + ".";
+  view.append(el("div", {class:"card", style:"background:linear-gradient(#FFFDF6,#FBF0D8);border-color:var(--gold)"}, '<h2>Want full clarity?</h2><p class="small" style="margin:0;color:#4E4232">A Vastu consultant checks everything this quick reading can\'t, and gives remedies made for your home. No demolition-first advice.</p><a class="btn" style="text-decoration:none" href="mailto:dhyaanenterprisesoffice@gmail.com?subject=' + encodeURIComponent("Vastu consultant review request") + '&body=' + encodeURIComponent(sum + "\n\nMy name:\nMy phone:\nProperty / flat:") + '">Ask a Vastu consultant</a>'));
   view.append(el("p", {class:"small muted", text:"Score based on " + res.scored + " of " + (res.total - open.length) + " rooms (open areas left out). Plan top faces " + P.heading + "° " + INFO[z8(P.heading)].name + " (" + (P.source || "") + ")."}));
   view.append(el("p", {class:"small muted", text:"Score = how well each room's zone matches the rule book, averaged over rooms that can be scored, out of a highest possible " + MAX_SCORE + ". Rules and remedies are drafts pending the expert's approval. Vastu can't guarantee wealth, health or success."}),
     el("div", {class:"row2"}, null));
