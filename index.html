@@ -414,6 +414,106 @@ function explainCard(inp, holder){
   return card;
 }
 
+// ======================================================================= PDF REPORT (made on the phone, works offline)
+function loadJsPdf(){
+  if (window.jspdf) return Promise.resolve(window.jspdf.jsPDF);
+  return new Promise(function(ok, bad){ var sc = document.createElement("script"); sc.src = "vendor/jspdf.umd.min.js"; sc.onload = function(){ ok(window.jspdf.jsPDF); }; sc.onerror = bad; document.head.append(sc); });
+}
+// standard PDF fonts only cover basic Latin: swap the few special characters we use
+function pdfText(t){ return String(t == null ? "" : t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/…/g, "...").replace(/·/g, "-").replace(/[^\x20-\x7E]/g, ""); }
+async function planPdf(res){
+  var JsPDF = await loadJsPdf(), doc = new JsPDF({unit:"mm", format:"a4"}), W = 210, M = 16, y = 0;
+  var INK = [43,33,22], MUTE = [110,96,76], GOLD = [138,100,36], SOFT = [251,240,216], LINE = [228,214,186];
+  var TONE = {ideal:[[47,125,79],[227,241,232]], acceptable:[[138,100,36],[251,240,216]], avoid:[[168,67,46],[248,227,221]], disputed:[[110,96,76],[239,232,218]], none:[[110,96,76],[239,232,218]]};
+  var v = res.score, vd = verdict(v), rooms = res.rooms, door = rooms.filter(function(r){ return r.type === "main_entrance"; })[0];
+  var when = new Date().toLocaleString("en-IN", {day:"numeric", month:"short", year:"numeric", hour:"numeric", minute:"2-digit"});
+  function color(c){ doc.setTextColor(c[0], c[1], c[2]); }
+  function font(style, size){ doc.setFont(style === "serif" ? "times" : "helvetica", style === "bold" ? "bold" : style === "serif" ? "bold" : "normal"); doc.setFontSize(size); }
+  function need(h){ if (y + h > 281) { footer(); doc.addPage(); y = 18; } }
+  function para(t, size, c, style, indent){ font(style || "normal", size); color(c || INK); var lines = doc.splitTextToSize(pdfText(t), W - 2 * M - (indent || 0)); need(lines.length * size * .42 + 1); doc.text(lines, M + (indent || 0), y); y += lines.length * size * .42 + 1.5; }
+  function heading(t){ need(14); y += 4; font("serif", 15); color(INK); doc.text(pdfText(t), M, y); y += 2; doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(.3); doc.line(M, y, W - M, y); y += 6; }
+  function footer(){ var n = doc.getNumberOfPages(); font("normal", 7.5); color(MUTE); doc.text(pdfText("Vastu Prop - quick reading - " + when + " - page " + n), M, 290); doc.text("Vastu is traditional guidance and can't guarantee outcomes.", W - M, 290, {align:"right"}); }
+  // header band
+  doc.setFillColor(SOFT[0], SOFT[1], SOFT[2]); doc.rect(0, 0, W, 34, "F");
+  font("serif", 22); color(INK); doc.text("Vastu Prop", M, 15);
+  font("normal", 10); color(GOLD); doc.text("FLOOR PLAN - QUICK VASTU READING", M, 22);
+  font("normal", 9); color(MUTE); doc.text(pdfText((P.sample ? "Sample 2 BHK plan" : "Your floor plan") + " - " + when), M, 28);
+  y = 46;
+  // score block
+  doc.setDrawColor(201,160,90); doc.setLineWidth(1.2); doc.circle(M + 13, y + 1, 12, "S");
+  font("serif", 20); color(INK); doc.text(v == null ? "-" : String(v), M + 13, y + 3, {align:"center"});
+  font("normal", 6.5); color(MUTE); doc.text("OF " + MAX_SCORE, M + 13, y + 8, {align:"center"});
+  var tone = v == null ? TONE.none : v >= 60 ? TONE.ideal : v >= 35 ? TONE.acceptable : TONE.avoid;
+  font("bold", 13); color(tone[0]); doc.text(pdfText(vd[0]), M + 32, y - 4);
+  font("normal", 10.5); color(INK);
+  doc.text(pdfText("Main door: " + (door ? zoneName(door.zone) : "not marked")), M + 32, y + 2);
+  doc.text(pdfText("Plan top faces: " + INFO[z8(P.heading)].name + " (" + Math.round(P.heading) + " deg, " + (P.source || "") + ")"), M + 32, y + 7.5);
+  y += 20;
+  doc.setFillColor(255,248,230); doc.setDrawColor(201,160,90); doc.setLineWidth(.3); doc.roundedRect(M, y - 4.5, W - 2 * M, 11, 2, 2, "FD");
+  font("normal", 8.5); color([78,66,50]); doc.text(doc.splitTextToSize("Quick reading, not 100% correct. It reads room placement from the plan only. Vastu consultant review is coming soon.", W - 2 * M - 6), M + 3, y); y += 12;
+  // in simple words
+  var ex = P.explain || localExplain(planExplainInput(res));
+  heading("In simple words"); para(ex.summary, 10.5);
+  (ex.rooms || []).forEach(function(r){ para(r.text, 9.5, [78,66,50], "normal", 3); });
+  // home at a glance
+  heading("Your home at a glance");
+  var cols = [M, M + 52, M + 110, M + 140];
+  font("bold", 8); color(MUTE); ["ROOM","DIRECTION","STATUS","BEST DIRECTION"].forEach(function(h, i){ doc.text(h, cols[i], y); }); y += 5;
+  var list = rooms.filter(function(r){ return !OPEN[r.type]; }).sort(function(a, b){ return RANK[a.status] - RANK[b.status]; });
+  list.forEach(function(r){
+    need(8); var t = TONE[r.status] || TONE.none, bz = bestZones(r.type), st = r.type === "bedroom" ? "Choose type" : (SC[r.status] || SC.none)[0];
+    font("bold", 10); color(INK); doc.text(pdfText(r.type === "main_entrance" ? "Main door" : r.name), cols[0], y);
+    font("normal", 10); doc.text(pdfText(zoneName(r.zone)), cols[1], y);
+    doc.setFillColor(t[1][0], t[1][1], t[1][2]); doc.roundedRect(cols[2] - 1.5, y - 4, 26, 5.8, 2.5, 2.5, "F"); font("bold", 8.5); color(t[0]); doc.text(pdfText(st), cols[2] + 11.5, y, {align:"center"});
+    font("normal", 9); color(MUTE); doc.text(pdfText(bz.ideal.map(zoneName).join(", ") || "-"), cols[3], y);
+    y += 3; doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(.2); doc.line(M, y, W - M, y); y += 5;
+  });
+  var openNames = rooms.filter(function(r){ return OPEN[r.type]; }).map(function(r){ return r.name; });
+  if (openNames.length) para("Open areas (not scored): " + openNames.join(", ") + ".", 8.5, MUTE);
+  // what sits in each direction
+  need(82); heading("What sits in each direction");
+  var gx = M + 18, gw = (W - 2 * M - 36) / 3, gh = 21;
+  ["NW","N","NE","W","C","E","SW","S","SE"].forEach(function(z, i){
+    var cx = gx + (i % 3) * gw, cy = y + Math.floor(i / 3) * gh, here = rooms.filter(function(r){ return r.zone === z; });
+    var worst = here.filter(function(r){ return RANK[r.status] < 3; }).sort(function(a, b){ return RANK[a.status] - RANK[b.status]; })[0], t = worst ? TONE[worst.status] : null;
+    doc.setFillColor(t ? t[1][0] : 255, t ? t[1][1] : 255, t ? t[1][2] : 255); doc.setDrawColor(t ? t[0][0] : LINE[0], t ? t[0][1] : LINE[1], t ? t[0][2] : LINE[2]); doc.setLineWidth(.4);
+    doc.roundedRect(cx + 1, cy, gw - 2, gh - 2, 2, 2, "FD");
+    font("bold", 7.5); color(MUTE); doc.text(z === "C" ? "CENTRE" : z + " - " + INFO[z].name.toUpperCase(), cx + 3.5, cy + 4.5);
+    font("normal", 8.5); here.slice(0, 3).forEach(function(r, k){ color(r.status === "avoid" ? TONE.avoid[0] : INK); doc.text(pdfText((r.type === "main_entrance" ? "Main door" : r.name) + (r.status === "avoid" ? " (avoid)" : r.status === "ideal" ? " (ideal)" : "")), cx + 3.5, cy + 9.5 + k * 4); });
+    if (!here.length) { color(MUTE); doc.text("-", cx + 3.5, cy + 9.5); }
+  });
+  y += 3 * gh + 2; font("normal", 8); color(MUTE); doc.text("North is at the top, whatever way your plan was drawn.", W / 2, y, {align:"center"}); y += 6;
+  // do these first
+  heading("Do these first");
+  var fixes = rooms.filter(function(r){ return r.status === "avoid"; });
+  if (!fixes.length) para("Your rooms sit in suitable zones. Keep them clean, bright and clutter-free.", 10);
+  fixes.slice(0, 5).forEach(function(r, i){ para((i + 1) + ".  " + (r.type === "main_entrance" ? "Main door" : r.name) + " (" + zoneName(r.zone) + "): " + firstFix(r), 10); });
+  para("No demolition needed. For any structural change, consult an architect or engineer first.", 9, [47,125,79], "bold");
+  // the plan, with each room labelled
+  try {
+    var im = await shrink(P.img, 1400), size = await new Promise(function(ok){ var i2 = new Image(); i2.onload = function(){ ok([i2.naturalWidth, i2.naturalHeight]); }; i2.onerror = function(){ ok([P.W, P.H]); }; i2.src = im.src; });
+    var maxW = W - 2 * M, maxH = 150, k = Math.min(maxW / size[0], maxH / size[1]), iw = size[0] * k, ih = size[1] * k;
+    need(ih + 16); heading("Your plan");
+    var ix = (W - iw) / 2; doc.addImage(im.src, "JPEG", ix, y, iw, ih);
+    rooms.forEach(function(r){ var t = TONE[r.status] || TONE.none, lx = ix + r.x / P.W * iw, ly = y + r.y / P.H * ih, label = pdfText((r.type === "main_entrance" ? "Door" : r.name) + " - " + r.zone);
+      font("bold", 6.5); var tw = doc.getTextWidth(label) + 3; doc.setFillColor(255,255,255); doc.setDrawColor(t[0][0], t[0][1], t[0][2]); doc.setLineWidth(.3); doc.roundedRect(lx - tw / 2, ly - 2.6, tw, 4.2, 1.5, 1.5, "FD"); color(t[0]); doc.text(label, lx, ly + .4, {align:"center"}); });
+    y += ih + 6;
+  } catch (e) {}
+  // closing notes
+  heading("About this reading");
+  para("This is an automated quick reading of room placement on your floor plan, using Vastu Prop's rule book (draft " + "2026.10.1, pending Vastu expert approval). It does not check the exact entrance position, details inside rooms, building facing, floor level, plot shape or surroundings. Phone compass readings can be affected by metal and electronics.", 8.5, MUTE);
+  para("Vastu is traditional design guidance. It cannot guarantee wealth, health, relationships or success, and it is not engineering, legal or medical advice.", 8.5, MUTE);
+  footer();
+  var name = "Vastu-Prop-" + (P.sample ? "sample-plan" : "floor-plan") + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
+  doc.save(name);
+  return name;
+}
+function pdfButton(make){
+  var b = el("button", {class:"btn2", type:"button", text:"Download PDF report"});
+  b.onclick = async function(){ b.disabled = true; b.textContent = "Making your PDF…"; try { var n = await make(); b.textContent = "Downloaded ✓ " ; buzz(30); } catch (e) { b.textContent = "Couldn't make the PDF. Try again"; } setTimeout(function(){ b.disabled = false; b.textContent = "Download PDF report"; }, 3000); };
+  return b;
+}
+
 // ======================================================================= MY CHECKS (saved on this phone only)
 function store(k, v){ try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } return true; }
 function savedChecks(){ try { var a = JSON.parse(store("vp_checks") || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
@@ -478,7 +578,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.3 · 31 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
+  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.4 · 31 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -510,7 +610,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.3 · 31 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.4 · 31 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -925,7 +1025,7 @@ function planStep5(){
   view.append(pv);
 
   view.append(el("p", {class:"small muted", style:"margin:0;text-align:center", text:"Quick reading, not 100% correct. Vastu consultant review is coming soon."}));
-  view.append(saveButton(!!P.savedId, function(){ return savePlan(res); }), el("button", {class:"btn", type:"button", text:"Check another plan", onclick:function(){ resetPlan(); goP(1); }}));
+  view.append(pdfButton(function(){ return planPdf(res); }), saveButton(!!P.savedId, function(){ return savePlan(res); }), el("button", {class:"btn", type:"button", text:"Check another plan", onclick:function(){ resetPlan(); goP(1); }}));
   view.append(el("div", {class:"small", style:"display:flex;justify-content:center;gap:18px"}, null));
   view.lastChild.append(el("a", {href:"javascript:void 0", style:"color:var(--gold-deep);font-weight:700", text:"Change direction", onclick:function(){ goP(3); }}), el("a", {href:"javascript:void 0", style:"color:var(--gold-deep);font-weight:700", text:"Edit rooms", onclick:function(){ goP(4); }}));
 }
