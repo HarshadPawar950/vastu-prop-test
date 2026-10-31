@@ -80,6 +80,10 @@ details.glance>summary>span:first-of-type,.glance-row>span:first-of-type{color:#
 .zc{min-height:74px;border:1.5px solid var(--line);border-radius:12px;background:#fff;padding:6px 7px;display:flex;flex-direction:column;gap:1px;min-width:0}
 .zc .zl{font-size:10.5px;font-weight:800;letter-spacing:.12em;color:var(--muted)}
 .zc .zr{font-size:12.5px;line-height:1.25;overflow-wrap:anywhere}
+.dlog{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto}
+.dmsg{align-self:flex-start;max-width:88%;background:var(--gold-soft);border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:14px;line-height:1.45;color:var(--ink)}
+.dmsg.me{align-self:flex-end;background:#fff;border:1px solid var(--line);border-radius:14px 14px 4px 14px}
+.dwhat{margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff;border:1px solid var(--gold);font-size:13px}
 .recent{display:flex;flex-direction:column;gap:8px}
 .chk{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;text-decoration:none;color:var(--ink);cursor:pointer;text-align:left;font:inherit;width:100%}
 .chk .sc{width:50px;height:50px;border-radius:25px;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:var(--gold-deep);background:var(--gold-soft)}
@@ -414,6 +418,70 @@ function explainCard(inp, holder){
   return card;
 }
 
+// ======================================================================= ASK DISHA (chat about this plan)
+// Disha runs in the vastu-ai service: it answers from the Vastu Prop knowledge base and re-scores "what if"
+// questions with the same fixed rules. The app sends only room positions and directions: no photo, image or location.
+var VAI_TYPES = {kitchen:1, master_bedroom:1, children_bedroom:1, guest_bedroom:1, pooja:1, living_room:1, dining:1, study:1, toilet:1, staircase:1, storage:1, cash_locker:1, underground_tank:1, overhead_tank:1};
+function dishaPlan(res){
+  var b = P.box, W = Math.max(4, b.x1 - b.x0), H = Math.max(4, b.y1 - b.y0), cl = function(v, hi){ return Math.max(0, Math.min(hi, v)); }, rooms = [], i = 0;
+  res.rooms.forEach(function(r){ if (!VAI_TYPES[r.type]) return; i++; rooms.push({id:"r" + i, name:String(r.name).slice(0, 40), type:r.type, x:cl(r.x - b.x0 - 1, W - 2), y:cl(r.y - b.y0 - 1, H - 2), w:2, h:2}); });
+  var plan = {width:W, height:H, rooms:rooms};
+  if (P.door) plan.entrance = {x:cl(P.door.x - b.x0, W), y:cl(P.door.y - b.y0, H)};
+  return plan;
+}
+async function askDisha(messages, res){
+  var ctl = new AbortController(), timer = setTimeout(function(){ ctl.abort(); }, 15000);
+  try {
+    var tok = await aiToken();
+    var r = await fetch(VP.SUPABASE_URL + "/functions/v1/" + VP.AI_FUNCTION + "/v1/chat", {method:"POST", signal:ctl.signal, headers:{Authorization:"Bearer " + tok, apikey:VP.SUPABASE_ANON_KEY, "Content-Type":"application/json"}, body:JSON.stringify({messages:messages.slice(-8), plan:dishaPlan(res), compass_deg:Math.round(P.heading) % 360})});
+    if (!r.ok) return {error:r.status};
+    var j = await r.json(); return j && typeof j.reply === "string" ? j : {error:"shape"};
+  } catch (e) { return {error:"network"}; } finally { clearTimeout(timer); }
+}
+var STW = {ideal:"Ideal", acceptable:"Okay", avoid:"Avoid", disputed:"Not scored", none:"Not scored"};
+function dishaCard(res){
+  var card = el("div", {class:"card", style:"gap:10px"});
+  card.append(el("div", {style:"display:flex;align-items:center;gap:10px"}, '<span aria-hidden="true" style="width:38px;height:38px;border-radius:19px;background:linear-gradient(#F6E3B4,#C9A05A);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:20px;color:#2B2116;flex:none">D</span><div><h2 style="margin:0">Ask Disha about your plan</h2><span class="small muted">Disha explains your fixed result. She can\'t change your score.</span></div>'));
+  var log = el("div", {class:"dlog"}), chips = el("div", {class:"chips"}), form = el("form", {style:"display:flex;gap:8px"});
+  var inp = el("input", {type:"text", maxlength:"300", placeholder:"Ask about your rooms or a change…", "aria-label":"Ask Disha", style:"flex:1;min-width:0;height:46px"});
+  var send = el("button", {class:"btn", type:"submit", style:"width:auto;min-height:46px;padding:0 18px", text:"Ask"});
+  form.append(inp, send);
+  var msgs = P.chat || (P.chat = []), busy = false;
+  function bubble(m){
+    var me = m.role === "user", d = el("div", {class:"dmsg" + (me ? " me" : "")});
+    d.append(el("div", null, esc(m.content).replace(/\n/g, "<br>")));
+    if (m.whatif) { var w = m.whatif; d.append(el("div", {class:"dwhat"}, '<b>' + esc(w.room) + ':</b> ' + esc(STW[w.status_before] || w.status_before) + ' → ' + esc(STW[w.status_after] || w.status_after) + (w.score_before != null && w.score_after != null ? ' · Score ' + w.score_before + ' → ' + w.score_after + ' (out of ' + MAX_SCORE + ')' : ''))); }
+    if (m.sources && m.sources.length) d.append(el("div", {class:"small muted", style:"margin-top:4px", text:"From: " + m.sources.slice(0, 3).join(", ")}));
+    if (m.note) d.append(el("div", {class:"small muted", style:"margin-top:4px", text:m.note}));
+    return d;
+  }
+  function draw(){ log.textContent = ""; msgs.forEach(function(m){ log.append(bubble(m)); }); log.hidden = !msgs.length;
+    var asked = msgs.filter(function(m){ return m.role === "user"; }).map(function(m){ return m.content; });
+    chips.querySelectorAll(".chip").forEach(function(c){ c.hidden = asked.indexOf(c.textContent) >= 0; }); }
+  async function ask(q){
+    q = String(q || "").trim(); if (!q || busy) return;
+    if (!aiReady()) { msgs.push({role:"user", content:q}, {role:"assistant", content:"Disha needs internet. Your result and fixes above still work offline.", local:true}); draw(); return; }
+    busy = true; send.disabled = true; inp.value = "";
+    msgs.push({role:"user", content:q}); draw();
+    var wait = el("div", {class:"dmsg"}, '<span class="muted">Disha is thinking…</span>'); log.append(wait);
+    var hist = msgs.filter(function(m){ return !m.local; }).map(function(m){ return {role:m.role, content:m.content}; });
+    var j = await askDisha(hist, res);
+    if (j.error) msgs.push({role:"assistant", local:true, content:j.error === 429 ? "You've reached today's free questions. Please come back tomorrow." : j.error === "network" ? "Disha couldn't be reached. Check your internet and try again." : "Disha couldn't answer that right now. Please try again."});
+    else msgs.push({role:"assistant", content:j.reply, whatif:j.engine && j.engine.whatif || null, sources:(j.sources || []).map(function(x){ return x.title; })});
+    P.savedId = null; busy = false; send.disabled = false; draw();
+    if (card.isConnected) log.lastChild.scrollIntoView({block:"nearest", behavior:"smooth"});
+  }
+  var kitchen = res.rooms.filter(function(r){ return r.type === "kitchen"; })[0], avoid = res.rooms.filter(function(r){ return r.status === "avoid" && VAI_TYPES[r.type]; })[0];
+  var mb = res.rooms.filter(function(r){ return r.type === "master_bedroom"; })[0];
+  [avoid ? "Why is my " + (avoid.type === "toilet" ? "toilet" : String(TNAME[avoid.type] || avoid.name).toLowerCase()) + " marked Avoid?" : "Is my home good as per Vastu?",
+   mb && mb.zone !== "SW" ? "What if I move the master bedroom to the South-West?" : kitchen && kitchen.zone !== "SE" ? "What if I move the kitchen to the South-East?" : "Which direction is best for a kitchen?",
+   "Where should the pooja room be?", "What can I do without breaking walls?"].forEach(function(q){ chips.append(el("button", {class:"chip", type:"button", style:"text-align:left;min-height:38px;font-size:13px", text:q, onclick:function(){ ask(q); }})); });
+  form.onsubmit = function(e){ e.preventDefault(); ask(inp.value); };
+  card.append(log, chips, form, el("span", {class:"small muted", text:"Up to 20 questions a day. Disha uses the Vastu Prop knowledge base and isn't a substitute for an expert."}));
+  draw();
+  return card;
+}
+
 // ======================================================================= PDF REPORT (made on the phone, works offline)
 function loadJsPdf(){
   if (window.jspdf) return Promise.resolve(window.jspdf.jsPDF);
@@ -578,9 +646,9 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.4 · 31 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
+  view.append(el("div", {class:"card doc"}, '<h1 style="font-size:30px">Vastu Prop</h1><p>Test build 1.5 · 31 Oct 2026. Published by Vastu Props AI LLP, a Dhyaan Enterprises venture.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
-    + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. Clearing the app\'s storage deletes your saved checks.</p>'
+    + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation and answer your questions to Disha. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
     + '<h2>Disclaimer</h2><p>Vastu is traditional design guidance. It cannot guarantee wealth, health, relationships or success, and it is not engineering, legal or medical advice. Rules and remedies in this test build are drafts pending review by a Vastu expert. Phone compasses can be disturbed by metal and electronics; recheck with the sun or a second reading before changing anything.</p>'
     + '<h2>Contact</h2><p>dhyaanenterprisesoffice@gmail.com</p>'));
@@ -610,7 +678,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.4 · 31 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.5 · 31 Oct 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -717,7 +785,7 @@ resetPlan();
 function loadSamplePlan(cb){
   var im = new Image(); im.onload = function(){
     var k = im.naturalWidth / SAMPLE_PLAN.W0;
-    P.img = SAMPLE_PLAN.src; P.W = im.naturalWidth; P.H = im.naturalHeight; P.sample = true; P.savedId = null; P.explain = null;
+    P.img = SAMPLE_PLAN.src; P.W = im.naturalWidth; P.H = im.naturalHeight; P.sample = true; P.savedId = null; P.explain = null; P.chat = null;
     P.box = {x0:SAMPLE_PLAN.box[0] * k, y0:SAMPLE_PLAN.box[1] * k, x1:SAMPLE_PLAN.box[2] * k, y1:SAMPLE_PLAN.box[3] * k};
     P.labels = SAMPLE_PLAN.labels.map(function(l){ return {id:++P.uid, name:l[0], type:l[1], x:l[2] * k, y:l[3] * k}; });
     cb();
@@ -805,12 +873,12 @@ function planView(o){
 function toImg(e, w){ var r = w.getBoundingClientRect(); return {x:Math.max(0, Math.min(P.W, (e.clientX - r.left) / r.width * P.W)), y:Math.max(0, Math.min(P.H, (e.clientY - r.top) / r.height * P.H))}; }
 function stepsBar(n){ var b = el("div", {style:"display:flex;gap:4px"}); for (var i = 1; i <= 5; i++) b.append(el("span", {style:"flex:1;height:5px;border-radius:3px;background:" + (i <= n ? "var(--gold)" : "var(--none-bg)")})); return b; }
 function Plan(){ ({1:planStep1, 2:planStep2, 3:planStep3, 4:planStep4, 5:planStep5})[P.step](); }
-function goP(n){ if (n < 5) P.explain = null; P.step = n; view.textContent = ""; window.scrollTo(0, 0); C.listeners = []; Plan(); }
+function goP(n){ if (n < 5) { P.explain = null; P.chat = null; } P.step = n; view.textContent = ""; window.scrollTo(0, 0); C.listeners = []; Plan(); }
 function planStep1(){
   view.append(stepsBar(1), el("span", {class:"eyebrow", text:"Floor plan check · 1 of 5"}), el("h1", {text:"Add your floor plan"}), el("p", {class:"muted", text:"Take a photo of a brochure plan, choose one from your gallery, or try the sample."}));
   var inp = el("input", {type:"file", accept:"image/*", id:"planfile", hidden:"hidden"});
   inp.onchange = function(){ var f = inp.files && inp.files[0]; if (!f) return; var url = URL.createObjectURL(f), im = new Image(); im.onload = async function(){
-    P.img = url; P.W = im.naturalWidth; P.H = im.naturalHeight; P.sample = false; P.savedId = null; P.explain = null; P.box = {x0:P.W * .04, y0:P.H * .04, x1:P.W * .96, y1:P.H * .96}; P.door = null; P.labels = []; P.reading = true; P.err = ""; goP(1);
+    P.img = url; P.W = im.naturalWidth; P.H = im.naturalHeight; P.sample = false; P.savedId = null; P.explain = null; P.chat = null; P.box = {x0:P.W * .04, y0:P.H * .04, x1:P.W * .96, y1:P.H * .96}; P.door = null; P.labels = []; P.reading = true; P.err = ""; goP(1);
     try { P.labels = await readPlanLabels(function(i, n){ var m = document.getElementById("ocrmsg"); if (m) m.textContent = "Reading the room names on your plan… pass " + i + " of " + n + " (free, on this phone)"; }); if (!P.labels.length) P.err = "No room names could be read. You can add rooms by tapping the plan in step 4."; }
     catch (e) { P.err = "Couldn't load the free text reader (needs internet once). You can add rooms by tapping the plan in step 4."; }
     P.reading = false; P.mode = "box"; goP(2);
@@ -984,7 +1052,7 @@ function planStep5(){
     d.append(el("summary", null, '<b>' + esc(gr.label) + '</b><span>' + esc(zones) + (worst.status === "avoid" && bz.ideal.length ? '<br><small style="color:var(--good);font-weight:800">best: ' + bz.ideal.map(function(z){ return SHORT[z]; }).join(", ") + '</small>' : '') + '</span>' + (gr.type === "bedroom" ? '<span class="st" style="background:var(--gold-soft);color:var(--gold-deep)">Choose</span>' : stPill(worst.status))));
     if (gr.type === "bedroom") {
       gr.list.forEach(function(r){ var row = el("div", {class:"chips", style:"padding:4px 0 8px"}); row.append(el("span", {class:"small muted", style:"width:100%", text:"Which bedroom is \"" + r.name + "\"?"}));
-        [["master_bedroom","Master"],["children_bedroom","Children's"],["guest_bedroom","Guest"]].forEach(function(t){ row.append(el("button", {class:"chip", type:"button", text:t[1], onclick:function(){ if (r.lab) { r.lab.type = t[0]; P.savedId = null; P.explain = null; } goP(5); }})); });
+        [["master_bedroom","Master"],["children_bedroom","Children's"],["guest_bedroom","Guest"]].forEach(function(t){ row.append(el("button", {class:"chip", type:"button", text:t[1], onclick:function(){ if (r.lab) { r.lab.type = t[0]; P.savedId = null; P.explain = null; P.chat = null; } goP(5); }})); });
         d.append(row); });
     } else {
       d.append(el("p", {class:"small", style:"margin:0 0 6px;color:#4E4232", text:roomWhy(worst)}));
@@ -1019,6 +1087,7 @@ function planStep5(){
   todo.append(el("span", {class:"small", style:"color:var(--good);font-weight:800", text:"No demolition needed."}));
   view.append(todo);
 
+  view.append(dishaCard(res));
   // 5. the plan itself, on tap
   var pv = el("details", {class:"card roomc"}); pv.append(el("summary", null, '<b style="font-size:15px">See it on your plan</b><span></span><span></span>'));
   pv.append(planView({zones:true, noDoor:true, chips:rooms.map(function(r){ var sc = SC[r.status]; return {x:r.x, y:r.y, text:r.name + " · " + r.zone, style:"border-color:" + sc[1] + ";color:" + sc[1] + ";background:" + sc[2]}; })}));
