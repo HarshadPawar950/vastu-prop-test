@@ -250,7 +250,7 @@ function sunFix(kind){
   if (!steadyOK("flat")) return "Lay the phone flat and hold still, then tap again.";
   var target = kind === "sun" ? C.sun.az : n360(C.sun.az + 180), off = angDiff(target, C.flatH);
   if (!noCompass() && Math.abs(off) > 45) return "The compass is " + Math.round(Math.abs(off)) + "° off the sun. Check you're pointing right, move away from metal, calibrate, and retry.";
-  C.offset = off; C.sunFixed = true; C.relFixed = true; C.fixAt = Date.now(); buzz(40); emit(); return null;
+  C.offset = off; C.sunFixed = true; C.relFixed = true; C.fixAt = Date.now(); buzz(40); emit(); track("compass_sun_set", {}); return null;
 }
 function spread(mode){
   var now = Date.now(); C.samples = C.samples.filter(function(s){ return now - s.t < 2000; });
@@ -382,12 +382,63 @@ async function authFetch(path, body){
   store(AUTH_KEY, JSON.stringify({a:j.access_token, r:j.refresh_token})); return j.access_token;
 }
 // anonymous sign-in once per phone; refresh the same user afterwards (so the daily limit is per phone)
-async function aiToken(){
+async function aiToken(force){
   var s = null; try { s = JSON.parse(store(AUTH_KEY) || "null"); } catch (e) {}
-  if (s && s.a && jwtExp(s.a) - Date.now() > 60000) return s.a;
+  if (!force && s && s.a && jwtExp(s.a) - Date.now() > 60000) return s.a;
   if (s && s.r) { try { return await authFetch("token?grant_type=refresh_token", {refresh_token:s.r}); } catch (e) {} }
   return authFetch("signup", {});
 }
+
+// ======================================================================= ANONYMOUS USAGE COUNTS (app_events)
+// Counts only: which checks run and their scores. Never photos, plans, location, flat numbers or typed text.
+// Off when config EVENTS_ENABLED isn't true, or the About switch is off. Never blocks or breaks the app.
+var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.1", evBusy = false, evSeq = 0;
+function evOn(){ return VP.EVENTS_ENABLED === true && !!(VP.SUPABASE_URL && VP.SUPABASE_ANON_KEY) && store("vp_share") !== "0"; }
+function evQueue(){ try { var a = JSON.parse(store(EV_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function evDevice(){
+  var d = store("vp_device"); if (d && /^[0-9a-f-]{36}$/i.test(d)) return d;
+  try { d = crypto.randomUUID(); } catch (e) { var b = new Uint8Array(16); crypto.getRandomValues(b); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128; var h = Array.prototype.map.call(b, function(x){ return (x + 256).toString(16).slice(1); }).join(""); d = h.slice(0,8) + "-" + h.slice(8,12) + "-" + h.slice(12,16) + "-" + h.slice(16,20) + "-" + h.slice(20); }
+  store("vp_device", d); return d;
+}
+function evPlatform(){
+  var ua = navigator.userAgent || "", standalone = false;
+  try { standalone = window.matchMedia("(display-mode: standalone)").matches; } catch (e) {}
+  if (standalone && /Android/i.test(ua)) return "android_app";
+  if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios_web";
+  return "web";
+}
+function track(event, props, sample){
+  try {
+    if (!evOn()) return;
+    var q = evQueue(); q.push({q:Date.now() + "-" + (++evSeq), device_id:evDevice(), event:event, platform:evPlatform(), app_version:APP_VERSION, props:props || {}, is_sample:!!sample});
+    q = q.slice(-EV_MAX);
+    while (q.length && !store(EV_KEY, JSON.stringify(q))) q = q.slice(Math.ceil(q.length / 2));   // storage full: keep the newest
+  } catch (e) {}
+}
+function evPost(rows, tok){
+  return fetch(VP.SUPABASE_URL + "/rest/v1/app_events?columns=device_id,event,platform,app_version,props,is_sample", {method:"POST", keepalive:true,
+    headers:{apikey:VP.SUPABASE_ANON_KEY, Authorization:"Bearer " + tok, "Content-Type":"application/json", Prefer:"return=minimal"}, body:JSON.stringify(rows)});
+}
+async function flushEvents(){
+  if (evBusy) return; evBusy = true;
+  try {
+    while (evOn() && navigator.onLine !== false) {
+      var batch = evQueue().slice(0, EV_BATCH); if (!batch.length) break;
+      var rows = batch.map(function(x){ return {device_id:x.device_id, event:x.event, platform:x.platform, app_version:x.app_version, props:x.props, is_sample:x.is_sample}; });
+      var r = await evPost(rows, await aiToken());
+      if (r.status === 401) r = await evPost(rows, await aiToken(true));   // token expired: refresh once
+      if (r.ok || r.status === 400 || r.status === 403) {                     // sent, or will never work: drop it
+        var ids = {}; batch.forEach(function(x){ ids[x.q] = 1; });
+        if (!store(EV_KEY, JSON.stringify(evQueue().filter(function(x){ return !ids[x.q]; })))) break;
+      } else break;                                                           // 401 again or 5xx: keep, retry later
+    }
+  } catch (e) {}                                                               // network error: keep, retry later
+  evBusy = false;
+}
+window.addEventListener("online", function(){ flushEvents(); });
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden") flushEvents(); });
+setInterval(flushEvents, 60000);
+setTimeout(flushEvents, 5000);
 async function fetchExplain(inp){
   var ctl = new AbortController(), timer = setTimeout(function(){ ctl.abort(); }, 8000);
   try {
@@ -413,11 +464,14 @@ function explainCard(inp, holder){
   var saved = holder.explain;
   if (saved && saved.summary) { draw(saved); return card; }          // reopened from My Checks: no API call
   var local = localExplain(inp); draw(local); holder.explain = local;
+  var shown = function(src){ track("explain_shown", {source:src}, holder.sample); };
   if (aiReady()) fetchExplain(inp).then(function(j){
+    shown(j.error ? "local" : j.source === "ai" || j.source === "template" ? j.source : "local");
     if (!card.isConnected) return;
     if (j.error) { draw(local, j.error === 429 ? "Today's AI limit is reached. Showing the simple version." : ""); return; }
     if (j.source === "ai") { var x = {summary:j.summary, rooms:j.rooms, closing:j.closing, source:"ai"}; holder.explain = x; draw(x); }
   });
+  else shown("local");
   return card;
 }
 
@@ -441,6 +495,7 @@ async function askDisha(messages, res){
     var j = await r.json(); return j && typeof j.reply === "string" ? j : {error:"shape"};
   } catch (e) { return {error:"network"}; } finally { clearTimeout(timer); }
 }
+var DISHA_KINDS = {whatif:1, own_room:1, general:1, no_info:1, error:1};
 var STW = {ideal:"Ideal", acceptable:"Okay", avoid:"Avoid", disputed:"Not scored", none:"Not scored"};
 function dishaCard(res){
   var card = el("div", {class:"card", style:"gap:10px"});
@@ -463,7 +518,7 @@ function dishaCard(res){
     chips.querySelectorAll(".chip").forEach(function(c){ c.hidden = asked.indexOf(c.textContent) >= 0; }); }
   async function ask(q){
     q = String(q || "").trim(); if (!q || busy) return;
-    if (!aiReady()) { msgs.push({role:"user", content:q}, {role:"assistant", content:"Disha needs internet. Your result and fixes above still work offline.", local:true}); draw(); return; }
+    if (!aiReady()) { msgs.push({role:"user", content:q}, {role:"assistant", content:"Disha needs internet. Your result and fixes above still work offline.", local:true}); draw(); track("disha_asked", {kind:"error"}, P.sample); return; }
     busy = true; send.disabled = true; inp.value = "";
     msgs.push({role:"user", content:q}); draw();
     var wait = el("div", {class:"dmsg"}, '<span class="muted">Disha is thinking…</span>'); log.append(wait);
@@ -471,6 +526,8 @@ function dishaCard(res){
     var j = await askDisha(hist, res);
     if (j.error) msgs.push({role:"assistant", local:true, content:j.error === 429 ? "You've reached today's free questions. Please come back tomorrow." : j.error === "network" ? "Disha couldn't be reached. Check your internet and try again." : "Disha couldn't answer that right now. Please try again."});
     else msgs.push({role:"assistant", content:j.reply, whatif:j.engine && j.engine.whatif || null, sources:(j.sources || []).map(function(x){ return x.title; })});
+    // kind comes from the reply's type, never from the question or answer text
+    track("disha_asked", {kind:j.error ? "error" : DISHA_KINDS.hasOwnProperty(j.kind) ? j.kind : j.engine && j.engine.whatif ? "whatif" : j.provider === "rule" ? "no_info" : "general"}, P.sample);
     P.savedId = null; busy = false; send.disabled = false; draw();
     if (card.isConnected) log.lastChild.scrollIntoView({block:"nearest", behavior:"smooth"});
   }
@@ -622,12 +679,12 @@ function checkRow(c){
   return b;
 }
 function openCheck(c){
-  if (c.kind === "plan") { P = JSON.parse(JSON.stringify(c.P)); P.step = 5; P.savedId = c.id; if (location.hash === "#plan") route(); else location.hash = "#plan"; }
-  else { var r = JSON.parse(JSON.stringify(c.R)); r.time = new Date(r.time); r.step = "result"; r.savedId = c.id; R = r; if (location.hash === "#room") route(); else location.hash = "#room"; }
+  if (c.kind === "plan") { P = JSON.parse(JSON.stringify(c.P)); P.step = 5; P.savedId = c.id; P.evSent = true; if (location.hash === "#plan") route(); else location.hash = "#plan"; }
+  else { var r = JSON.parse(JSON.stringify(c.R)); r.time = new Date(r.time); r.step = "result"; r.savedId = c.id; r.evSent = true; R = r; if (location.hash === "#room") route(); else location.hash = "#room"; }
 }
-function saveButton(isSaved, doSave){
+function saveButton(isSaved, doSave, onSaved){
   var b = el("button", {class:"btn2", type:"button", text:isSaved ? "Saved in My Checks ✓" : "Save to My Checks", disabled:isSaved ? "disabled" : null});
-  b.onclick = async function(){ b.disabled = true; b.textContent = "Saving…"; var ok = await doSave(); b.textContent = ok ? "Saved in My Checks ✓" : "Phone storage full: couldn't save"; if (ok) buzz(30); else b.disabled = false; };
+  b.onclick = async function(){ b.disabled = true; b.textContent = "Saving…"; var ok = await doSave(); b.textContent = ok ? "Saved in My Checks ✓" : "Phone storage full: couldn't save"; if (ok) { buzz(30); if (onSaved) onSaved(); } else b.disabled = false; };
   return b;
 }
 async function savePlan(res){
@@ -667,12 +724,18 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6 · 2 Nov 2026. Published by Dhyaan Enterprises.</p>'
+  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.1 · 3 Nov 2026. Published by Dhyaan Enterprises.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
-    + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation and answer your questions to Disha. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. Clearing the app\'s storage deletes your saved checks.</p>'
+    + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation and answer your questions to Disha. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. If the switch below is on, the app also sends anonymous usage counts (which checks you run and their scores). Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
     + '<h2>Disclaimer</h2><p>Vastu is traditional design guidance. It cannot guarantee wealth, health, relationships or success, and it is not engineering, legal or medical advice. Rules and remedies in this test build are drafts pending review by a Vastu expert. Phone compasses can be disturbed by metal and electronics; recheck with the sun or a second reading before changing anything.</p>'
     + '<h2>Contact</h2><p>dhyaanenterprisesoffice@gmail.com</p><p><a href="privacy.html" style="color:var(--gold-deep);font-weight:800">Read the full privacy policy</a></p>'));
+  var share = el("input", {type:"checkbox", id:"vpshare", role:"switch", style:"width:24px;height:24px;flex:none;accent-color:#8A6424"});
+  share.checked = store("vp_share") !== "0";
+  share.onchange = function(){ try { if (share.checked) store("vp_share", "1"); else { store("vp_share", "0"); store(EV_KEY, null); } } catch (e) {} };
+  var sw = el("label", {class:"card", for:"vpshare", style:"flex-direction:row;align-items:flex-start;gap:12px;cursor:pointer"});
+  sw.append(share, el("span", {style:"display:flex;flex-direction:column;gap:4px"}, '<b style="font-size:15px">Share anonymous usage to improve Vastu Prop</b><span class="small muted">Counts only: which checks you run and their scores. Never your photos, plans, location, flat number or what you type.</span>'));
+  view.append(sw);
   var w = el("button", {class:"btn2", type:"button", text:"Show the welcome screen again", onclick:function(){ store("vp_welcomed", null); location.hash = "#welcome"; }});
   view.append(w);
 }
@@ -699,7 +762,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6 · 2 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.1 · 3 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -763,6 +826,10 @@ function Compass(){
   });
   if (!C.started) { startCompass(); calibrate(); } else emit();
   drawLoc();
+  // once per opening, when we know whether the phone has a compass (or after 3 s at most)
+  var opened = false, sent = function(){ if (opened) return; opened = true; track("compass_open", {no_compass:!!(noCompass() || (C.none && !C.live))}); };
+  if (C.live || C.none) sent();
+  else { C.listeners.push(function(){ if (C.live || C.none) sent(); }); setTimeout(sent, 3000); }
 }
 // a short card for screens that need direction when the phone has no compass
 function noCompassCard(){
@@ -784,7 +851,7 @@ function Numbers(){
   var inp = el("input", {type:"text", id:"flat", value:state.v, "aria-label":"Flat or house number", maxlength:"20", inputmode:"text", style:"flex:1;min-width:0;height:52px;font-size:20px;letter-spacing:.08em"});
   f.append(inp, el("button", {class:"btn", type:"submit", text:"Calculate", style:"width:auto;padding:0 20px"}));
   var out = el("div", {style:"display:flex;flex-direction:column;gap:12px"});
-  f.addEventListener("submit", function(e){ e.preventDefault(); inp.blur(); draw(inp.value.trim()); });
+  f.addEventListener("submit", function(e){ e.preventDefault(); inp.blur(); var r = draw(inp.value.trim()); if (r) track("numerology_lookup", {number:r.number}); });   // the single digit only, never the flat number
   view.append(f, out);
   function draw(v){
     out.textContent = ""; var r = homeNumber(v);
@@ -795,6 +862,7 @@ function Numbers(){
     var m = NUM[String(r.number)];
     out.append(el("div", {class:"card"}, '<span class="tag g" style="align-self:flex-start">Approved · 27 Oct 2026</span><span class="lbl">Home number ' + r.number + '</span><h2>' + esc(m.title) + '</h2><p style="font-size:14px;color:#4E4232">' + esc(m.meaning) + '</p><span class="lbl">Colour ideas</span><p class="small"><b>' + esc(m.lucky_colours) + '</b></p><span class="lbl">Often suits</span><div class="chips" style="gap:6px">' + m.suits.split(", ").map(function(s){ return '<span class="tag" style="background:var(--gold-soft);color:var(--gold-deep)">' + esc(s) + '</span>'; }).join("") + '</div>'));
     out.append(el("p", {class:"small muted", text:"Numerology is a traditional, belief-based practice. No number guarantees wealth, health or happiness, and no number is bad."}));
+    return r;
   }
   draw(state.v);
 }
@@ -894,7 +962,7 @@ function planView(o){
 function toImg(e, w){ var r = w.getBoundingClientRect(); return {x:Math.max(0, Math.min(P.W, (e.clientX - r.left) / r.width * P.W)), y:Math.max(0, Math.min(P.H, (e.clientY - r.top) / r.height * P.H))}; }
 function stepsBar(n){ var b = el("div", {style:"display:flex;gap:4px"}); for (var i = 1; i <= 5; i++) b.append(el("span", {style:"flex:1;height:5px;border-radius:3px;background:" + (i <= n ? "var(--gold)" : "var(--none-bg)")})); return b; }
 function Plan(){ ({1:planStep1, 2:planStep2, 3:planStep3, 4:planStep4, 5:planStep5})[P.step](); }
-function goP(n){ if (n < 5) { P.explain = null; P.chat = null; } P.step = n; view.textContent = ""; window.scrollTo(0, 0); C.listeners = []; Plan(); }
+function goP(n){ if (n < 5) { P.explain = null; P.chat = null; P.evSent = false; } P.step = n; view.textContent = ""; window.scrollTo(0, 0); C.listeners = []; Plan(); }
 function planStep1(){
   view.append(stepsBar(1), el("span", {class:"eyebrow", text:"Floor plan check · 1 of 5"}), el("h1", {text:"Add your floor plan"}), el("p", {class:"muted", text:"Take a photo of a brochure plan, choose one from your gallery, or try the sample."}));
   var inp = el("input", {type:"file", accept:"image/*", id:"planfile", hidden:"hidden"});
@@ -1049,6 +1117,9 @@ function stPill(st){ var s = SC[st] || SC.none; return '<span class="st" style="
 function planStep5(){
   var res = evaluatePlan(), v = res.score, vd = verdict(v), rooms = res.rooms;
   var door = rooms.filter(function(r){ return r.type === "main_entrance"; })[0];
+  if (!P.evSent) { P.evSent = true;   // once per check: not on re-render, not when reopened from My Checks
+    var avoid = []; rooms.forEach(function(r){ var k = r.type + "_" + r.zone; if (r.status === "avoid" && avoid.indexOf(k) < 0) avoid.push(k); });
+    track("plan_check_done", {score:v, scored:res.scored, total:res.total, facing8:z8(P.heading), door_zone:door ? door.zone : null, avoid:avoid.slice(0, 20)}, P.sample); }
   view.append(stepsBar(5), el("span", {class:"eyebrow", text:(P.sample ? "Sample 2 BHK" : "Your floor plan") + " · quick reading"}));
 
   // 1. the answer
@@ -1115,7 +1186,7 @@ function planStep5(){
   view.append(pv);
 
   view.append(el("p", {class:"small muted", style:"margin:0;text-align:center", text:"Quick reading, not 100% correct. Vastu consultant review is coming soon."}));
-  view.append(pdfButton(function(){ return planPdf(res); }), saveButton(!!P.savedId, function(){ return savePlan(res); }), el("button", {class:"btn", type:"button", text:"Check another plan", onclick:function(){ resetPlan(); goP(1); }}));
+  view.append(pdfButton(function(){ return planPdf(res).then(function(n){ track("pdf_download", {kind:"plan"}, P.sample); return n; }); }), saveButton(!!P.savedId, function(){ return savePlan(res); }, function(){ track("check_saved", {kind:"plan"}, P.sample); }), el("button", {class:"btn", type:"button", text:"Check another plan", onclick:function(){ resetPlan(); goP(1); }}));
   view.append(el("div", {class:"small", style:"display:flex;justify-content:center;gap:18px"}, null));
   view.lastChild.append(el("a", {href:"javascript:void 0", style:"color:var(--gold-deep);font-weight:700", text:"Change direction", onclick:function(){ goP(3); }}), el("a", {href:"javascript:void 0", style:"color:var(--gold-deep);font-weight:700", text:"Edit rooms", onclick:function(){ goP(4); }}));
 }
@@ -1131,7 +1202,7 @@ function roomType(){
   var ch = el("div", {class:"chips"});
   ROOMS.forEach(function(r){ ch.append(el("button", {class:"chip", type:"button", "aria-pressed":String(R.room === r[0]), text:r[1], onclick:function(){ R.room = r[0]; goR("type"); }})); });
   view.append(ch, el("button", {class:"btn", type:"button", text:"Open the camera", onclick:function(){ goR("cam"); }}),
-    el("button", {class:"btn2", type:"button", text:"Try the sample office photo", onclick:function(){ R.room = "office"; R.photo = "sample_room.jpg"; R.heading = 268; R.time = new Date(); R.savedId = null; R.explain = null; R.source = "sample (camera faced West)"; R.taps = {seat:{x:.49, y:.40}}; R.ans = {faces:"toward", back:"wall", mirror:"no", dustbin:"yes", cables:"yes", clutter:"medium", light:"ok"}; goR("result"); }}));
+    el("button", {class:"btn2", type:"button", text:"Try the sample office photo", onclick:function(){ R.room = "office"; R.photo = "sample_room.jpg"; R.heading = 268; R.time = new Date(); R.savedId = null; R.explain = null; R.sample = true; R.evSent = false; R.source = "sample (camera faced West)"; R.taps = {seat:{x:.49, y:.40}}; R.ans = {faces:"toward", back:"wall", mirror:"no", dustbin:"yes", cables:"yes", clutter:"medium", light:"ok"}; goR("result"); }}));
 }
 function roomCam(){
   var cam = el("div", {class:"cam"}), video = el("video", {playsinline:"", autoplay:"", muted:""}); video.muted = true;
@@ -1166,7 +1237,7 @@ function roomCam(){
     if (shut.disabled) return;
     var cv = document.createElement("canvas"), w = video.videoWidth, h = video.videoHeight, k = Math.min(1, 1280 / Math.max(w, h)); cv.width = w * k; cv.height = h * k;
     cv.getContext("2d").drawImage(video, 0, 0, cv.width, cv.height);
-    R.photo = cv.toDataURL("image/jpeg", .85); R.heading = Math.round(heading("up")); R.time = new Date(); R.savedId = null; R.explain = null; R.source = C.live ? (C.sunFixed ? "phone compass, sun-checked" : "phone compass, steady, upright") : "set by hand";
+    R.photo = cv.toDataURL("image/jpeg", .85); R.heading = Math.round(heading("up")); R.time = new Date(); R.savedId = null; R.explain = null; R.sample = false; R.evSent = false; R.source = C.live ? (C.sunFixed ? "phone compass, sun-checked" : "phone compass, steady, upright") : "set by hand";
     R.taps = {}; R.ans = {}; buzz(40); goR("tap");
   };
 }
@@ -1226,6 +1297,7 @@ function roomEval(){
 }
 function roomResult(){
   var r = roomEval(), z = z8(R.heading);
+  if (!R.evSent) { R.evSent = true; track("room_check_done", {room_type:R.room, facing8:z, fixes:r.fix.length, good:r.good.length}, R.sample); }
   view.append(el("span", {class:"eyebrow", text:"Room check · result"}), el("h1", {text:"Your room, read for Vastu"}), el("p", {class:"muted", text:r.good.length + " things are good · " + r.fix.length + " small fixes · no demolition needed"}));
   var shot = el("div", {class:"shot"}); shot.append(el("img", {src:R.photo, alt:"Your room with Vastu notes"}));
   r.pins.forEach(function(p){ if (!p[0]) return; var tx = p[0].x < .3 ? "0" : p[0].x > .7 ? "-100%" : "-50%"; shot.append(el("span", {class:"pin", style:"left:" + Math.min(97, Math.max(3, p[0].x * 100)) + "%;top:" + Math.min(76, Math.max(6, p[0].y * 100)) + "%;transform:translate(" + tx + ",-50%);background:" + (p[1] === "good" ? "var(--good)" : "#D98A1E"), text:p[2]})); });
@@ -1243,11 +1315,12 @@ function roomResult(){
   var fc = el("div", {class:"card", style:"background:linear-gradient(#FFFDF6,#FBF0D8)"}); fc.append(el("h2", {text: r.fix.length ? r.fix.length + " simple fixes" : "Nothing to fix"})); if (!r.fix.length) fc.append(el("p", {class:"muted", text:"This room already follows the main Vastu suggestions we check."})); r.fix.forEach(function(x, i){ fc.append(el("div", {class:"item"}, '<span class="num">' + (i + 1) + '</span><span><b>' + esc(x[0]) + '</b> ' + esc(x[1]) + '</span>')); }); fc.append(el("b", {style:"color:var(--good);font-size:13px", text:"No demolition needed."}));
   view.append(explainCard(roomExplainInput(r), R));
   view.append(gc, fc, el("p", {class:"small muted", text:"Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules are drafts pending the expert's approval."}),
-    saveButton(!!R.savedId, saveRoom), el("button", {class:"btn", type:"button", text:"Check another room", onclick:function(){ R.photo = null; R.savedId = null; goR("type"); }}));
+    saveButton(!!R.savedId, saveRoom, function(){ track("check_saved", {kind:"room"}, R.sample); }), el("button", {class:"btn", type:"button", text:"Check another room", onclick:function(){ R.photo = null; R.savedId = null; goR("type"); }}));
 }
 
 // ======================================================================= start
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function(){});
+track("app_open", {});
 route();
 })();
 </script>
