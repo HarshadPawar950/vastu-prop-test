@@ -17,16 +17,14 @@
   --gold:#C9A05A; --gold-deep:#8A6424; --gold-soft:#FBF0D8;
   --good:#2F7D4F; --good-bg:#E3F1E8; --ok:#8A6424; --ok-bg:#FBF0D8; --bad:#A8432E; --bad-bg:#F8E3DD; --none:#6E604C; --none-bg:#EFE8DA; --warn:#B8650A; --warn-bg:#FFF1D6;
   --g-live:#3DBB73; --a-live:#F0A33A; --r-live:#E5604A;
-  --display:Fraunces,Georgia,serif; --body:'DM Sans',system-ui,sans-serif;
+  --display:Poppins,system-ui,sans-serif; --body:Poppins,system-ui,sans-serif;
   color-scheme:light;
 }
-@font-face{font-family:Fraunces;font-weight:500;font-display:swap;src:url(fonts/fraunces-500.woff2) format('woff2')}
-@font-face{font-family:Fraunces;font-weight:600;font-display:swap;src:url(fonts/fraunces-600.woff2) format('woff2')}
-@font-face{font-family:'DM Sans';font-weight:400;font-display:swap;src:url(fonts/dmsans-400.woff2) format('woff2')}
-@font-face{font-family:'DM Sans';font-weight:500;font-display:swap;src:url(fonts/dmsans-500.woff2) format('woff2')}
-@font-face{font-family:'DM Sans';font-weight:600;font-display:swap;src:url(fonts/dmsans-600.woff2) format('woff2')}
-@font-face{font-family:'DM Sans';font-weight:700;font-display:swap;src:url(fonts/dmsans-700.woff2) format('woff2')}
-@font-face{font-family:'DM Sans';font-weight:800;font-display:swap;src:url(fonts/dmsans-800.woff2) format('woff2')}
+@font-face{font-family:Poppins;font-weight:400;font-display:swap;src:url(fonts/poppins-400.woff2) format('woff2')}
+@font-face{font-family:Poppins;font-weight:500;font-display:swap;src:url(fonts/poppins-500.woff2) format('woff2')}
+@font-face{font-family:Poppins;font-weight:600;font-display:swap;src:url(fonts/poppins-600.woff2) format('woff2')}
+@font-face{font-family:Poppins;font-weight:700;font-display:swap;src:url(fonts/poppins-700.woff2) format('woff2')}
+@font-face{font-family:Poppins;font-weight:800;font-display:swap;src:url(fonts/poppins-800.woff2) format('woff2')}
 html,body{margin:0;background:var(--bg) url(assets/cream.svg) repeat top center/390px 844px;color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
 #view{max-width:480px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px;min-height:100vh}
 nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,253,248,.97);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px max(6px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));z-index:20}
@@ -315,14 +313,14 @@ function dialHTML(){
     var p0 = pt(c, 58, a0), p1 = pt(c, 128, a0), p2 = pt(c, 128, a1), p3 = pt(c, 58, a1);
     g += '<path class="wz" data-z="' + z + '" d="M' + p0 + ' L' + p1 + ' A128 128 0 0 1 ' + p2 + ' L' + p3 + ' A58 58 0 0 0 ' + p0 + 'Z" fill="' + col + '" fill-opacity=".13" stroke="#C9A05A"/>';
     var m = pt(c, 100, i * 45), d = pt(c, 78, i * 45);
-    g += '<text transform="rotate(' + (i * 45) + ' ' + m + ')" x="' + m[0] + '" y="' + (m[1] + 6) + '" text-anchor="middle" font-family="DM Sans" font-weight="800" font-size="' + (z.length > 1 ? 15 : 19) + '" fill="' + (z === "N" ? "#A8432E" : "#5E4416") + '">' + z + '</text>';
-    g += '<text transform="rotate(' + (i * 45) + ' ' + d + ')" x="' + d[0] + '" y="' + (d[1] + 4) + '" text-anchor="middle" font-family="DM Sans" font-weight="600" font-size="9.5" fill="#6E604C">' + info.deity.split(" / ")[0] + '</text>';
+    g += '<text transform="rotate(' + (i * 45) + ' ' + m + ')" x="' + m[0] + '" y="' + (m[1] + 6) + '" text-anchor="middle" font-family="Poppins" font-weight="800" font-size="' + (z.length > 1 ? 15 : 19) + '" fill="' + (z === "N" ? "#A8432E" : "#5E4416") + '">' + z + '</text>';
+    g += '<text transform="rotate(' + (i * 45) + ' ' + d + ')" x="' + d[0] + '" y="' + (d[1] + 4) + '" text-anchor="middle" font-family="Poppins" font-weight="600" font-size="9.5" fill="#6E604C">' + info.deity.split(" / ")[0] + '</text>';
   });
   for (var deg = 0; deg < 360; deg += 5) { var o = pt(c, 162, deg), i2 = pt(c, deg % 45 === 0 ? 148 : deg % 15 === 0 ? 153 : 157, deg); g += '<line x1="' + o[0] + '" y1="' + o[1] + '" x2="' + i2[0] + '" y2="' + i2[1] + '" stroke="#A47A32" stroke-width="' + (deg % 45 === 0 ? 2 : 1) + '"/>'; }
-  Z16.forEach(function(z, i){ if (i % 2 === 0) return; var p = pt(c, 140, i * 22.5); g += '<text transform="rotate(' + (i * 22.5) + ' ' + p + ')" x="' + p[0] + '" y="' + (p[1] + 3.5) + '" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="9" fill="#8A6424">' + z + '</text>'; });
+  Z16.forEach(function(z, i){ if (i % 2 === 0) return; var p = pt(c, 140, i * 22.5); g += '<text transform="rotate(' + (i * 22.5) + ' ' + p + ')" x="' + p[0] + '" y="' + (p[1] + 3.5) + '" text-anchor="middle" font-family="Poppins" font-weight="700" font-size="9" fill="#8A6424">' + z + '</text>'; });
   g += '<circle class="sundot" cx="170" cy="20" r="9" fill="#F2B233" stroke="#fff" stroke-width="2" visibility="hidden"/><circle cx="170" cy="170" r="56" fill="#FBF0D8" stroke="#C9A05A" stroke-width="1.5"/>';
   return '<div class="rot" style="position:absolute;inset:0;will-change:transform"><svg viewBox="0 0 340 340" aria-hidden="true">' + g + '</svg></div>'
-    + '<svg viewBox="0 0 340 340" style="position:absolute;inset:0" aria-hidden="true"><path d="M170 0 l11 20 h-22z" fill="#2B2116"/><text x="170" y="166" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="600" font-size="16" fill="#5E4416">Brahmasthan</text><text x="170" y="183" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="10" fill="#6E604C">Space · Akasha</text></svg>';
+    + '<svg viewBox="0 0 340 340" style="position:absolute;inset:0" aria-hidden="true"><path d="M170 0 l11 20 h-22z" fill="#2B2116"/><text x="170" y="166" text-anchor="middle" font-family="Poppins, sans-serif" font-weight="600" font-size="16" fill="#5E4416">Brahmasthan</text><text x="170" y="183" text-anchor="middle" font-family="Poppins" font-weight="700" font-size="10" fill="#6E604C">Space · Akasha</text></svg>';
 }
 function turnDial(root, h, state){
   if (h === null) return;
@@ -392,7 +390,7 @@ async function aiToken(force){
 // ======================================================================= ANONYMOUS USAGE COUNTS (app_events)
 // Counts only: which checks run and their scores. Never photos, plans, location, flat numbers or typed text.
 // Off when config EVENTS_ENABLED isn't true, or the About switch is off. Never blocks or breaks the app.
-var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.1", evBusy = false, evSeq = 0;
+var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.2", evBusy = false, evSeq = 0;
 function evOn(){ return VP.EVENTS_ENABLED === true && !!(VP.SUPABASE_URL && VP.SUPABASE_ANON_KEY) && store("vp_share") !== "0"; }
 function evQueue(){ try { var a = JSON.parse(store(EV_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function evDevice(){
@@ -724,7 +722,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.1 · 3 Nov 2026. Published by Dhyaan Enterprises.</p>'
+  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.2 · 3 Nov 2026. Published by Dhyaan Enterprises.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation and answer your questions to Disha. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. If the switch below is on, the app also sends anonymous usage counts (which checks you run and their scores). Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -762,7 +760,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.1 · 3 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.2 · 3 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -950,7 +948,7 @@ function planView(o){
       for (var k = 0; k < 8; k++) { var rel = (22.5 + 45 * k - hd) * Math.PI / 180; s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + L * Math.sin(rel)) + '" y2="' + (cy - L * Math.cos(rel)) + '" stroke="#C9A05A" stroke-width="' + P.W / 400 + '" stroke-dasharray="' + P.W / 90 + ' ' + P.W / 140 + '"/>'; }
       s += '<rect x="' + (cx - w2 / 6) + '" y="' + (cy - h2 / 6) + '" width="' + w2 / 3 + '" height="' + h2 / 3 + '" fill="rgba(201,160,90,.12)" stroke="#8A6424" stroke-width="' + P.W / 500 + '" stroke-dasharray="6 5"/>';
       var rr = Math.min(w2, h2) * .46, fs = P.W / 30;
-      Z8.forEach(function(z, i){ var a = (45 * i - hd) * Math.PI / 180, x = cx + rr * Math.sin(a), y = cy - rr * Math.cos(a); s += '<circle cx="' + x + '" cy="' + y + '" r="' + fs * .95 + '" fill="' + (z === "N" ? "#A8432E" : "#8A6424") + '" opacity=".92"/><text x="' + x + '" y="' + (y + fs * .36) + '" text-anchor="middle" font-family="DM Sans" font-weight="800" font-size="' + fs * (z.length > 1 ? .78 : 1) + '" fill="#fff">' + z + '</text>'; });
+      Z8.forEach(function(z, i){ var a = (45 * i - hd) * Math.PI / 180, x = cx + rr * Math.sin(a), y = cy - rr * Math.cos(a); s += '<circle cx="' + x + '" cy="' + y + '" r="' + fs * .95 + '" fill="' + (z === "N" ? "#A8432E" : "#8A6424") + '" opacity=".92"/><text x="' + x + '" y="' + (y + fs * .36) + '" text-anchor="middle" font-family="Poppins" font-weight="800" font-size="' + fs * (z.length > 1 ? .78 : 1) + '" fill="#fff">' + z + '</text>'; });
       s += '</g>';
     }
   }
@@ -1125,7 +1123,7 @@ function planStep5(){
   // 1. the answer
   var col = v == null || (v >= 35 && v < 60) ? "#C9A05A" : v >= 60 ? "#2F7D4F" : "#A8432E";
   view.append(el("div", {class:"card", style:"flex-direction:row;align-items:center;gap:16px;background:linear-gradient(#FFFDF6,#FBF0D8)"},
-    '<svg width="96" height="96" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v + " of " + MAX_SCORE) + '" style="flex:none"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="9"/><circle cx="66" cy="66" r="54" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 339.3 * v / MAX_SCORE).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="76" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-size="' + (v == null ? 26 : 50) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="96" text-anchor="middle" font-family="DM Sans" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">OF ' + MAX_SCORE + '</text></svg>'
+    '<svg width="96" height="96" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v + " of " + MAX_SCORE) + '" style="flex:none"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="9"/><circle cx="66" cy="66" r="54" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 339.3 * v / MAX_SCORE).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="76" text-anchor="middle" font-family="Poppins, sans-serif" font-size="' + (v == null ? 26 : 50) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="96" text-anchor="middle" font-family="Poppins" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">OF ' + MAX_SCORE + '</text></svg>'
     + '<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="st" style="align-self:flex-start;font-size:14px;background:' + vd[2] + ';color:' + vd[1] + '">' + vd[0] + '</span>'
     + '<b style="font-size:16px;line-height:1.35">Main door: ' + (door ? INFO[door.zone] ? INFO[door.zone].name : "Centre" : "not marked") + '<br>Plan top faces: ' + INFO[z8(P.heading)].name + '</b></div>'));
 
