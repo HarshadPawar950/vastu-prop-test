@@ -1014,15 +1014,22 @@ function planStep3(){
   view.append(stepsBar(3), el("span", {class:"eyebrow", text:"Floor plan check · 3 of 5"}), el("h1", {text:"Which way does your main door face?"}),
     el("p", {class:"muted", text:"Stand at your main door and look out of your home. Which direction are you facing? If you're not sure, check the builder's brochure, your society papers, or a compass app."}));
   var DEG = {N:0, NE:45, E:90, SE:135, S:180, SW:225, W:270, NW:315};
-  var grid = el("div", {role:"group", "aria-label":"Direction your main door faces", style:"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:340px;margin:4px auto 0;width:100%"});
+  var card = el("div", {class:"card", style:"background:linear-gradient(#FFFDF6,#FBF0D8);gap:12px;align-items:center"});
+  card.append(el("span", {class:"eyebrow", style:"text-align:center", text:"Tap the direction you face"}));
+  var grid = el("div", {role:"group", "aria-label":"Direction your main door faces", style:"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:330px;width:100%"});
   ["NW","N","NE","W","","E","SW","S","SE"].forEach(function(z){
-    if (!z) { grid.append(el("div", {style:"display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--gold-deep);text-align:center;line-height:1.2"}, '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 21V4h11v17M16 4l3 1v16M12 13h1"/></svg>Your door')); return; }
-    var on = P.doorFacing === z;
-    grid.append(el("button", {class:"chip", type:"button", "aria-pressed":String(on), style:"min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:17px;font-weight:800;border-radius:16px" + (on ? ";background:var(--ink);color:#fff;border-color:var(--ink)" : ""), onclick:function(){
-      P.doorFacing = z; P.heading = n360(DEG[z] - doorWallAngle()); P.source = "main door faces " + INFO[z].name + " (you chose)"; buzz(30); goP(4);
-    }}, '<span>' + z + '</span><span style="font-size:11px;font-weight:600;opacity:.8">' + INFO[z].name + '</span>'));
+    if (!z) { grid.append(el("div", {style:"display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-deep);text-align:center"}, logoSVG(46) + '<span>Your door</span>')); return; }
+    var on = P.doorFacing === z, north = z === "N";
+    grid.append(el("button", {type:"button", "aria-pressed":String(on), "aria-label":"Main door faces " + INFO[z].name,
+      style:"min-height:84px;border-radius:20px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--body);color:#2B2116;" +
+        (on ? "border:0;background:linear-gradient(#F6E3B4,#E2BF7A 50%,#C9A05A);box-shadow:0 6px 18px rgba(164,122,50,.3),inset 0 1px 0 rgba(255,255,255,.9)"
+            : "border:1.5px solid rgba(164,122,50,.45);background:#fff;box-shadow:0 2px 8px rgba(164,122,50,.08)"),
+      onclick:function(){ P.doorFacing = z; P.heading = n360(DEG[z] - doorWallAngle()); P.source = "main door faces " + INFO[z].name + " (you chose)"; buzz(30); goP(4); }},
+      '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(' + DEG[z] + 'deg)"><path d="M12 3l5 9h-3.5v9h-3v-9H7z" fill="' + (north ? "#A8432E" : "#B8862F") + '"/></svg>' +
+      '<b style="font-size:19px;line-height:1;color:' + (north ? "#A8432E" : "#2B2116") + '">' + z + '</b><span style="font-size:11.5px;font-weight:600;color:#6E604C">' + INFO[z].name + '</span>'));
   });
-  view.append(grid, el("p", {class:"small muted", style:"text-align:center;margin:0", text:"Tip: an \"East-facing flat\" usually means the main door faces East."}),
+  card.append(grid);
+  view.append(card, el("p", {class:"small muted", style:"text-align:center;margin:0", text:"Tip: an \"East-facing flat\" usually means the main door faces East."}),
     el("button", {class:"btn2", type:"button", text:"Back", onclick:function(){ P.mode = "door"; goP(2); }}));
 }
 function planStep4(){
