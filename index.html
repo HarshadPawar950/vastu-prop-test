@@ -392,7 +392,7 @@ async function aiToken(force){
 // ======================================================================= ANONYMOUS USAGE COUNTS (app_events)
 // Counts only: which checks run and their scores. Never photos, plans, location, flat numbers or typed text.
 // Off when config EVENTS_ENABLED isn't true, or the About switch is off. Never blocks or breaks the app.
-var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.4", evBusy = false, evSeq = 0;
+var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.5", evBusy = false, evSeq = 0;
 function evOn(){ return VP.EVENTS_ENABLED === true && !!(VP.SUPABASE_URL && VP.SUPABASE_ANON_KEY) && store("vp_share") !== "0"; }
 function evQueue(){ try { var a = JSON.parse(store(EV_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function evDevice(){
@@ -728,7 +728,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.4 · 4 Nov 2026. Published by Dhyaan Enterprises.</p>'
+  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.5 · 4 Nov 2026. Published by Dhyaan Enterprises.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation and answer your questions to Disha. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. If the switch below is on, the app also sends anonymous usage counts (which checks you run and their scores). Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -766,7 +766,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.4 · 4 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.5 · 4 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -1136,7 +1136,7 @@ function planStep5(){
   var door = rooms.filter(function(r){ return r.type === "main_entrance"; })[0];
   if (!P.evSent) { P.evSent = true;   // once per check: not on re-render, not when reopened from My Checks
     var avoid = []; rooms.forEach(function(r){ var k = r.type + "_" + r.zone; if (r.status === "avoid" && avoid.indexOf(k) < 0) avoid.push(k); });
-    track("plan_check_done", {score:v, scored:res.scored, total:res.total, facing8:z8(P.heading), door_zone:door ? door.zone : null, avoid:avoid.slice(0, 20)}, P.sample); }
+    track("plan_check_done", {score:v, scored:res.scored, total:res.total, facing8:z8(P.heading), door_zone:door ? door.zone : null, door_facing:/^(N|NE|E|SE|S|SW|W|NW)$/.test(P.doorFacing || "") ? P.doorFacing : null, avoid:avoid.slice(0, 20)}, P.sample); }
   view.append(stepsBar(5), el("span", {class:"eyebrow", text:(P.sample ? "Sample 2 BHK" : "Your floor plan") + " · quick reading"}));
 
   // 1. the answer
