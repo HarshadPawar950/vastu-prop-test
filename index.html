@@ -392,7 +392,7 @@ async function aiToken(force){
 // ======================================================================= ANONYMOUS USAGE COUNTS (app_events)
 // Counts only: which checks run and their scores. Never photos, plans, location, flat numbers or typed text.
 // Off when config EVENTS_ENABLED isn't true, or the About switch is off. Never blocks or breaks the app.
-var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.3", evBusy = false, evSeq = 0;
+var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.4", evBusy = false, evSeq = 0;
 function evOn(){ return VP.EVENTS_ENABLED === true && !!(VP.SUPABASE_URL && VP.SUPABASE_ANON_KEY) && store("vp_share") !== "0"; }
 function evQueue(){ try { var a = JSON.parse(store(EV_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function evDevice(){
@@ -728,7 +728,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.3 · 3 Nov 2026. Published by Dhyaan Enterprises.</p>'
+  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.4 · 4 Nov 2026. Published by Dhyaan Enterprises.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation and answer your questions to Disha. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. If the switch below is on, the app also sends anonymous usage counts (which checks you run and their scores). Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -766,7 +766,7 @@ function Home(){
   } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.3 · 3 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.4 · 4 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
@@ -1000,31 +1000,30 @@ function planStep2(){
     view.append(v, el("button", {class:"btn", type:"button", text:"Walls look right", onclick:function(){ P.mode = "door"; P.err = ""; goP(2); }}), el("button", {class:"btn2", type:"button", text:"Back", onclick:function(){ goP(1); }}));
   } else {
     v.addEventListener("click", function(e){ P.door = toImg(e, v); goP(2); });
-    var nx = el("button", {class:"btn", type:"button", text:"Next: set the direction", onclick:function(){ goP(3); }}); if (!P.door) nx.disabled = true;
+    var nx = el("button", {class:"btn", type:"button", text:"Next: door direction", onclick:function(){ goP(3); }}); if (!P.door) nx.disabled = true;
     view.append(v, el("p", {class:"small muted", text:P.door ? "Door marked. Tap again to move it." : "Look for the arrow or the gap marked as the entry."}), nx, el("button", {class:"btn2", type:"button", text:"Adjust the walls", onclick:function(){ P.mode = "box"; goP(2); }}));
   }
 }
+// which wall of the plan the main door is on: 0 = top, 90 = right, 180 = bottom, 270 = left (outward direction on the plan)
+function doorWallAngle(){
+  var b = P.box, d = P.door; if (!b || !d) return 0;
+  var t = d.y - b.y0, r = b.x1 - d.x, bo = b.y1 - d.y, l = d.x - b.x0, m = Math.min(t, r, bo, l);
+  return m === t ? 0 : m === r ? 90 : m === bo ? 180 : 270;
+}
 function planStep3(){
-  var st = {};
-  view.append(stepsBar(3), el("span", {class:"eyebrow", text:"Floor plan check · 3 of 5"}), el("h1", {text:"Which way does the top of your plan face?"}),
-    el("p", {class:"muted", text:"Stand in your home, lay the phone flat and point its top the same way as the top of your plan."}));
-  var pill = el("div", {style:"display:flex;justify-content:center"}), rd = el("div", {style:"text-align:center"}, '<span class="deg" id="pdeg">—°</span><br><b id="pzone"></b>');
-  var dial = el("div", {class:"dial", style:"max-width:260px"}, dialHTML());
-  var use = el("button", {class:"btn", type:"button", disabled:"disabled", text:"Wait for steady…"});
-  var man = el("div", {style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"}); var ni = el("input", {type:"number", min:"0", max:"359", placeholder:"e.g. 128", "aria-label":"Degrees", style:"width:110px"});
-  man.append(el("span", {class:"small muted", text:"Or type degrees:"}), ni, el("button", {class:"btn2", type:"button", text:"Use", style:"width:auto;padding:0 16px", onclick:function(){ var x = Number(ni.value); if (ni.value === "" || !(x >= 0 && x < 360)) { ni.focus(); return; } P.heading = x; P.source = "manual"; goP(4); }}));
-  var slot = el("div");
-  view.append(pill, rd, dial, use, man, slot, el("button", {class:"btn2", type:"button", text:"Back", onclick:function(){ P.mode = "door"; goP(2); }}));
-  use.onclick = function(){ P.heading = Math.round(heading("flat")); P.source = C.live ? (C.sunFixed ? "phone, sun-checked" : "phone compass") : "set by hand"; goP(4); };
-  C.listeners.push(function(){
-    var h = heading("flat"), s = cstatus("flat"); pill.innerHTML = statusPill("flat");
-    if (C.none && !C.live && !slot.firstChild) slot.append(manualSlider());
-    if (noCompass() && !C.relFixed && !slot.firstChild) slot.append(noCompassCard());
-    if (h === null) { if (noCompass()) { $("pdeg").textContent = "?°"; $("pzone").textContent = "Set direction with the sun first"; use.disabled = true; use.textContent = "Wait for direction…"; } return; }
-    $("pdeg").textContent = (s[0] === "amber" ? "~" : "") + Math.round(h) + "°"; $("pzone").textContent = INFO[z8(h)].name + " · " + INFO[z8(h)].deity;
-    turnDial(dial, h, st); use.disabled = !s[2]; use.textContent = s[2] ? "Use " + Math.round(h) + "° · " + INFO[z8(h)].name : "Wait for steady…";
+  view.append(stepsBar(3), el("span", {class:"eyebrow", text:"Floor plan check · 3 of 5"}), el("h1", {text:"Which way does your main door face?"}),
+    el("p", {class:"muted", text:"Stand at your main door and look out of your home. Which direction are you facing? If you're not sure, check the builder's brochure, your society papers, or a compass app."}));
+  var DEG = {N:0, NE:45, E:90, SE:135, S:180, SW:225, W:270, NW:315};
+  var grid = el("div", {role:"group", "aria-label":"Direction your main door faces", style:"display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:340px;margin:4px auto 0;width:100%"});
+  ["NW","N","NE","W","","E","SW","S","SE"].forEach(function(z){
+    if (!z) { grid.append(el("div", {style:"display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--gold-deep);text-align:center;line-height:1.2"}, '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 21V4h11v17M16 4l3 1v16M12 13h1"/></svg>Your door')); return; }
+    var on = P.doorFacing === z;
+    grid.append(el("button", {class:"chip", type:"button", "aria-pressed":String(on), style:"min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:17px;font-weight:800;border-radius:16px" + (on ? ";background:var(--ink);color:#fff;border-color:var(--ink)" : ""), onclick:function(){
+      P.doorFacing = z; P.heading = n360(DEG[z] - doorWallAngle()); P.source = "main door faces " + INFO[z].name + " (you chose)"; buzz(30); goP(4);
+    }}, '<span>' + z + '</span><span style="font-size:11px;font-weight:600;opacity:.8">' + INFO[z].name + '</span>'));
   });
-  if (!C.started) { startCompass(); calibrate(); } else emit();
+  view.append(grid, el("p", {class:"small muted", style:"text-align:center;margin:0", text:"Tip: an \"East-facing flat\" usually means the main door faces East."}),
+    el("button", {class:"btn2", type:"button", text:"Back", onclick:function(){ P.mode = "door"; goP(2); }}));
 }
 function planStep4(){
   var rooms = P.labels.filter(inside), out = P.labels.length - rooms.length;
@@ -1138,7 +1137,7 @@ function planStep5(){
   view.append(el("div", {class:"card", style:"flex-direction:row;align-items:center;gap:16px;background:linear-gradient(#FFFDF6,#FBF0D8)"},
     '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;width:104px"><svg width="96" height="96" viewBox="0 0 132 132" role="img" aria-label="Score ' + (v == null ? "not available" : v + " / " + SHOW_MAX) + '" style="flex:none"><circle cx="66" cy="66" r="60" fill="#fff"/><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(164,122,50,.16)" stroke-width="9"/><circle cx="66" cy="66" r="54" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (v == null ? 0 : 339.3 * v / SHOW_MAX).toFixed(1) + ' 339.3" transform="rotate(-90 66 66)"/><text x="66" y="76" text-anchor="middle" font-family="Poppins, sans-serif" font-size="' + (v == null ? 26 : 50) + '" font-weight="600" fill="#2B2116">' + (v == null ? "—" : v) + '</text><text x="66" y="96" text-anchor="middle" font-family="Poppins" font-size="10" font-weight="700" letter-spacing="2" fill="#6E604C">/ ' + SHOW_MAX + '</text></svg><span class="small muted" style="font-size:11.5px;line-height:1.25;text-align:center">Highest possible in the app: ' + MAX_SCORE + '</span></div>'
     + '<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="st" style="align-self:flex-start;font-size:14px;background:' + vd[2] + ';color:' + vd[1] + '">' + vd[0] + '</span>'
-    + '<b style="font-size:16px;line-height:1.35">Main door: ' + (door ? INFO[door.zone] ? INFO[door.zone].name : "Centre" : "not marked") + '<br>Plan top faces: ' + INFO[z8(P.heading)].name + '</b></div>'));
+    + '<b style="font-size:16px;line-height:1.35">' + (P.doorFacing && INFO[P.doorFacing] ? 'Main door faces: ' + INFO[P.doorFacing].name + '<br><span style="font-weight:600;font-size:14px">Door sits in the ' + (door && INFO[door.zone] ? INFO[door.zone].name : "Centre") + ' zone</span>' : 'Main door: ' + (door ? INFO[door.zone] ? INFO[door.zone].name : "Centre" : "not marked")) + '<br>Plan top faces: ' + INFO[z8(P.heading)].name + '</b></div>'));
 
   view.append(noticeCard("plan"));
   view.append(explainCard(planExplainInput(res), P));
