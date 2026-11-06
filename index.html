@@ -59,6 +59,18 @@ p{margin:0}
 .hero ~ *{position:relative;z-index:1}
 .spark{position:absolute;pointer-events:none;filter:drop-shadow(0 0 5px rgba(201,160,90,.7))}
 @media (prefers-reduced-motion:no-preference){.hero .art img{animation:spin 120s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}}
+.hcard{background:#2B2116;border-radius:24px;padding:24px 20px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 26px rgba(43,33,22,.22)}
+.hlink{background:none;border:0;color:#FBF6EC;font:700 15px var(--body);text-decoration:underline;text-underline-offset:3px;padding:10px;cursor:pointer;min-height:44px}
+.trust{display:flex;flex-wrap:wrap;gap:8px}
+.trust span{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:16px;background:var(--good-bg);color:var(--good);font-size:12.5px;font-weight:700}
+.how{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+.how .step{display:flex;gap:14px;align-items:flex-start}
+.how .step>span:last-child{display:flex;flex-direction:column;gap:2px}
+.how .step b{font-size:15.5px}
+.how .n{flex:none;width:34px;height:34px;border-radius:17px;background:var(--gold-soft);color:var(--gold-deep);font-weight:800;display:flex;align-items:center;justify-content:center}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tool{display:flex;flex-direction:column;gap:10px;padding:14px 12px;border-radius:18px;background:#fff;border:1px solid var(--line);color:var(--ink);text-decoration:none;min-height:112px;box-shadow:0 4px 12px rgba(164,122,50,.06)}
+.tool b{font-size:13.5px;line-height:1.25}
 .topbar{display:flex;justify-content:space-between;align-items:center}
 .iconbtn{width:44px;height:44px;border-radius:22px;border:1px solid var(--line);background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;color:var(--gold-deep);text-decoration:none}
 .dialwrap{position:relative;isolation:isolate}
@@ -392,7 +404,7 @@ async function aiToken(force){
 // ======================================================================= ANONYMOUS USAGE COUNTS (app_events)
 // Counts only: which checks run and their scores. Never photos, plans, location, flat numbers or typed text.
 // Off when config EVENTS_ENABLED isn't true, or the About switch is off. Never blocks or breaks the app.
-var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.6.5", evBusy = false, evSeq = 0;
+var EV_KEY = "vp_events", EV_MAX = 200, EV_BATCH = 50, APP_VERSION = "1.7.0", evBusy = false, evSeq = 0;
 function evOn(){ return VP.EVENTS_ENABLED === true && !!(VP.SUPABASE_URL && VP.SUPABASE_ANON_KEY) && store("vp_share") !== "0"; }
 function evQueue(){ try { var a = JSON.parse(store(EV_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function evDevice(){
@@ -728,7 +740,7 @@ function Welcome(){
 }
 function About(){
   view.append(el("div", {class:"topbar"}, '<a class="iconbtn" href="#home" aria-label="Back to home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></a><span class="eyebrow">About & privacy</span><span style="width:44px"></span>'));
-  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.6.5 · 4 Nov 2026. Published by Dhyaan Enterprises.</p>'
+  view.append(el("div", {class:"card doc"}, '<div style="display:flex;align-items:center;gap:12px">' + logoSVG(44) + '<h1 style="font-size:28px">Vastu Prop</h1></div><p>Test build 1.7.0 · 6 Nov 2026. Published by Dhyaan Enterprises.</p>'
     + '<h2>What it does</h2><p>Reads which Vastu zone each room sits in, using your phone\'s compass (or the sun, on phones without one), and scores it against a fixed rule book. The same plan and direction always give the same score. Suggested fixes never need demolition.</p>'
     + '<h2>Your data</h2><p>Photos, plans and saved checks stay on this phone. Floor plans are read on the phone itself. When you are online, your result (never your photos, plan or location) is sent to the Vastu Prop AI service to write the simple explanation and answer your questions to Disha. Your location is used only to correct the compass and check it against the sun, and is not stored or sent anywhere. If the switch below is on, the app also sends anonymous usage counts (which checks you run and their scores). Clearing the app\'s storage deletes your saved checks.</p>'
     + '<h2>Permissions</h2><p><b>Motion and compass:</b> to find direction. <b>Location:</b> optional, for magnetic correction and the sun check. <b>Camera:</b> only for the room check, when you tap it.</p>'
@@ -746,28 +758,44 @@ function About(){
 
 // ======================================================================= HOME
 function Home(){
-  view.append(el("div", {class:"topbar"}, '' + brandLockup(30) + '<a class="iconbtn" href="#about" aria-label="About and privacy"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></a>'));
-  var h = el("div", {class:"hero"});
-  h.append(el("div", {class:"art", "aria-hidden":"true"}, '<div class="glow"></div><img src="assets/mandala.svg" alt=""><div class="veil"></div>'));
-  h.insertAdjacentHTML("beforeend", "<svg class=\"spark\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" style=\"left:6%;top:40px\" aria-hidden=\"true\"><path d=\"M12 0C12.6 8.5 15.5 11.4 24 12 15.5 12.6 12.6 15.5 12 24 11.4 15.5 8.5 12.6 0 12 8.5 11.4 11.4 8.5 12 0Z\" fill=\"#C9A05A\"/></svg><svg class=\"spark\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" style=\"right:8%;top:20px\" aria-hidden=\"true\"><path d=\"M12 0C12.6 8.5 15.5 11.4 24 12 15.5 12.6 12.6 15.5 12 24 11.4 15.5 8.5 12.6 0 12 8.5 11.4 11.4 8.5 12 0Z\" fill=\"#C9A05A\"/></svg><svg class=\"spark\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" style=\"right:4%;top:230px\" aria-hidden=\"true\"><path d=\"M12 0C12.6 8.5 15.5 11.4 24 12 15.5 12.6 12.6 15.5 12 24 11.4 15.5 8.5 12.6 0 12 8.5 11.4 11.4 8.5 12 0Z\" fill=\"#C9A05A\"/></svg>");
-  h.append( el("h1", {text:"Find your home's right direction"}), el("p", {class:"muted", text:"Four tools. Your phone's compass and camera do the work, our fixed Vastu rules do the scoring."}));
-  view.append(h);
-  var t = el("div", {class:"tiles"});
-  [["plan","Floor plan check","Score a plan room by room","M3 3h18v18H3zM3 12h7v9M10 12V3M14 3v6h7"],["room","Room camera check","Point, shoot, get fixes","M4 8h3l2-3h6l2 3h3v11H4zM15.5 13a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z"],["compass","Vastu compass","8 and 16 zones, sun check","M12 3a9 9 0 110 18 9 9 0 010-18zM12 5l2.5 7L12 19l-2.5-7z"],["numbers","Home numerology","What your flat number means","M4 4h16v16H4zM9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16"]].forEach(function(x){
-    t.append(el("a", {class:"tile", href:"#" + x[0]}, '<svg viewBox="0 0 24 24" fill="none" stroke="#8A6424" stroke-width="1.6" aria-hidden="true"><path d="' + x[3] + '"/></svg><b>' + x[1] + '</b><span>' + x[2] + '</span>'));
+  view.append(el("div", {class:"topbar"}, '' + brandLockup(30) + '<a class="iconbtn" href="#about" aria-label="About and privacy"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></a>'));
+  // 1. hero: one clear action
+  var hero = el("section", {class:"hcard"});
+  hero.append(el("span", {class:"eyebrow", style:"color:#E9CF98", text:"Find your home's right direction"}),
+    el("h1", {style:"color:#FBF6EC;font-size:30px", text:"Is your home Vastu-friendly?"}),
+    el("p", {style:"color:#E8DCC6;font-size:15px;line-height:1.5", text:"Add a floor plan, tell us which way your main door faces, and see your score out of 100 with simple fixes. About 2 minutes."}),
+    el("a", {class:"btn", href:"#plan", style:"display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;margin-top:6px"}, '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h9M13 4v16"/></svg>Check your floor plan'),
+    el("button", {type:"button", class:"hlink", text:"Try the sample 2 BHK plan", onclick:function(){ startSample = true; location.hash = "#plan"; }}));
+  view.append(hero);
+  // 2. trust chips
+  var tr = el("div", {class:"trust"});
+  ["Free check", "Plan stays on your phone", "No-demolition fixes"].forEach(function(t){ tr.append(el("span", null, '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>' + esc(t))); });
+  view.append(tr);
+  // 3. how it works
+  var how = el("section", {class:"how"}); how.append(el("h2", {text:"How it works"}));
+  [["Add your floor plan","A photo of the brochure plan, or one from your gallery."],["Tell us your door direction","Which way does your main door face? Tap one of 8 directions."],["Get your score and fixes","Room by room, with simple fixes. Download the PDF."]].forEach(function(x, i){
+    how.append(el("div", {class:"step"}, '<span class="n">' + (i + 1) + '</span><span><b>' + esc(x[0]) + '</b><span class="small muted">' + esc(x[1]) + '</span></span>'));
+  });
+  view.append(how);
+  // 4. more tools
+  view.append(el("h2", {style:"margin-top:4px", text:"More tools"}));
+  var t = el("div", {class:"tools"});
+  [["room","Room camera check","M4 8h3l2-3h6l2 3h3v11H4zM15.5 13a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z"],["compass","Vastu compass","M12 3a9 9 0 100 18 9 9 0 000-18zM15.5 8.5l-2 5-5 2 2-5z"],["numbers","Home number meaning","M4 11l8-7 8 7v9H4zM10 20v-5h4v5"]].forEach(function(x){
+    t.append(el("a", {class:"tool", href:"#" + x[0]}, '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8A6424" stroke-width="1.7" aria-hidden="true"><path d="' + x[2] + '"/></svg><b>' + x[1] + '</b>'));
   });
   view.append(t);
+  // 5. my checks
   var recent = savedChecks();
-  if (recent.length) {
-    var rb = el("div", {class:"recent"});
-    rb.append(el("div", {style:"display:flex;justify-content:space-between;align-items:baseline"}, '<span class="lbl">Recent checks</span><a href="#checks" style="color:var(--gold-deep);font-weight:800;font-size:13px">See all</a>'));
-    recent.slice(0, 2).forEach(function(c){ rb.append(checkRow(c)); });
-    view.append(rb);
-  } else view.append(el("a", {class:"btn2", href:"#checks", style:"display:flex;align-items:center;justify-content:center;text-decoration:none", text:"My Checks"}));
+  var rb = el("div", {class:"recent"});
+  rb.append(el("div", {style:"display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"}, '<h2>My Checks</h2>' + (recent.length ? '<a href="#checks" style="color:var(--gold-deep);font-weight:800;font-size:13px">See all</a>' : '')));
+  if (recent.length) recent.slice(0, 2).forEach(function(c){ rb.append(checkRow(c)); });
+  else rb.append(el("p", {class:"small muted", text:"Your saved checks will show here. They stay on this phone."}));
+  view.append(rb);
   var inst = el("button", {class:"btn2", type:"button", text:"Install on this phone", hidden:installEvt ? null : "hidden"});
   inst.onclick = async function(){ if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; inst.hidden = true; };
-  view.append(inst, el("p", {class:"small muted", text:"Test build 1.6.5 · 4 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
+  view.append(inst, el("p", {class:"small muted", style:"text-align:center", text:"Test build 1.7.0 · 6 Nov 2026. Vastu is traditional design guidance; it can't guarantee wealth, health or success. Rules and remedies are drafts pending the expert's approval."}));
 }
+var startSample = false;
 var installEvt = null;
 window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; });
 
@@ -968,6 +996,7 @@ function stepsBar(n){ var b = el("div", {style:"display:flex;gap:4px"}); for (va
 function Plan(){ ({1:planStep1, 2:planStep2, 3:planStep3, 4:planStep4, 5:planStep5})[P.step](); }
 function goP(n){ if (n < 5) { P.explain = null; P.chat = null; P.evSent = false; } P.step = n; view.textContent = ""; window.scrollTo(0, 0); C.listeners = []; Plan(); }
 function planStep1(){
+  if (startSample) { startSample = false; loadSamplePlan(function(){ P.mode = "box"; P.door = null; goP(2); }); return; }
   view.append(stepsBar(1), el("span", {class:"eyebrow", text:"Floor plan check · 1 of 5"}), el("h1", {text:"Add your floor plan"}), el("p", {class:"muted", text:"Take a photo of a brochure plan, choose one from your gallery, or try the sample."}));
   var inp = el("input", {type:"file", accept:"image/*", id:"planfile", hidden:"hidden"});
   inp.onchange = function(){ var f = inp.files && inp.files[0]; if (!f) return; var url = URL.createObjectURL(f), im = new Image(); im.onload = async function(){
